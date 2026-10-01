@@ -1,9 +1,11 @@
 extends SceneTree
 ## 메아리 발자국 — 검사 (기획실 작성)
 ## 1차: design/spec_m1.json 의 M1~M12 (design/FIRST_BUILD.md "테스트 인터페이스")
-## 2차: design/spec.json 의 M13~M18 (design/BUILD_2.md "테스트 인터페이스" 추가분)
-## 기대값은 design/first_build_replay.py, design/build_2_replay.py (기준 구현 design/sim/sim.py)로 계산했다.
+## 2차: design/spec_m2.json 의 M13~M18 (design/BUILD_2.md "테스트 인터페이스" 추가분)
+## 3차: design/spec.json 의 M19~M25 (design/BUILD_3.md "테스트 인터페이스" 추가분)
+## 기대값은 design/first_build_replay.py, build_2_replay.py, build_3_replay.py (기준 구현 design/sim/sim.py)로 계산했다.
 ## 2차에서 기대값이 바뀐 1차 검사: M1·M10(기본 층 수 3 → 5), M9(정답 순서) — design/BUILD_2.md "바뀐 기존 검사".
+## 3차에서 기대값이 바뀐 이전 검사: M1·M10(기본 층 수 5 → 10), M9(5층 뒤가 승리가 아니라 6층) — design/BUILD_3.md.
 ## 빌드실·개발실은 이 파일을 바꾸지 않는다. 틀렸다고 판단되면 반송한다.
 ## 실행: python tools/smoke.py games/<slug>
 
@@ -13,6 +15,12 @@ const F2 := "L L U SU R L D R SR U R W"
 const F3 := "U R U D SR L U R R L SU W W D"
 const F4 := "U U R D R L U L U SU D U W"
 const F5 := "U U SU R D R R D L L SL R L R"
+# 3차 본편(build_3_replay.py)
+const F6 := "U U L SU W R R U SU L U D"
+const F7 := "SU U D R SR L U U L L L SU D W U"
+const F8 := "U R R L U L SU L U U D SL W W U"
+const F9 := "U SU W U L D R SU D L U U U L SR U"
+const F10 := "U SR U D L R R D R U U U U R U"
 
 var game: Node
 var frame := 0
@@ -38,6 +46,7 @@ func _process(_delta: float) -> bool:
 func run_all() -> void:
 	m1_title_starts_floor_one()
 	m9_golden_replay()
+	m25_main_campaign_replay()
 	m12_touch_input()
 	m2_illegal_actions()
 	m3_echo_delay_and_footprints()
@@ -52,6 +61,12 @@ func run_all() -> void:
 	m16_stomp_from_side_pushes()
 	m17_crush()
 	m18_standing_slash_loses()
+	m19_bomber_throws()
+	m20_explosion()
+	m21_explosion_hits_enemies()
+	m22_cooldown_and_echo()
+	m23_rewind_restores()
+	m24_rewind_limits()
 	m11_pressure_and_turn_limit()
 	m10_defeat_and_restart()
 
@@ -102,6 +117,27 @@ func crush_is(n: int) -> bool:
 
 
 ## 적 0번이 방패병이고 주어진 칸·체력·바라보는 방향인가
+## 적 i번이 폭탄병이고 주어진 칸·쿨다운인가
+func bomber_is(i: int, pos: Vector2i, cool: int) -> bool:
+	if game.enemies.size() <= i:
+		return false
+	var e: Dictionary = game.enemies[i]
+	return e["kind"] == "B" and e["pos"] == pos and e.get("cool", -1) == cool
+
+
+## 적 i번의 의도가 던지기이고 대상 칸이 맞는가
+func bomb_intent(i: int, target: Vector2i) -> bool:
+	if game.enemies.size() <= i:
+		return false
+	var e: Dictionary = game.enemies[i]
+	return e["intent"] == "bomb" and e.get("target", Vector2i(-9, -9)) == target and e["dir"] == Vector2i.ZERO
+
+
+## 놓인 폭탄이 정확히 하나이고 그 칸·남은 턴이 맞는가
+func one_bomb(pos: Vector2i, fuse: int) -> bool:
+	return game.bombs.size() == 1 and game.bombs[0]["pos"] == pos and game.bombs[0]["fuse"] == fuse
+
+
 func shield_is(pos: Vector2i, hp: int, face: Vector2i) -> bool:
 	if game.enemies.is_empty():
 		return false
@@ -115,7 +151,7 @@ func m1_title_starts_floor_one() -> void:
 	check("M1", game.state == game.State.TITLE, "실행 직후 타이틀")
 	game.debug_tap(Vector2(270, 480))
 	check("M1", game.state == game.State.PLAY, "탭하면 플레이")
-	check("M1", game.floor_index == 0 and game.floor_count == 5 and game.turn == 0, "1층, 전체 5층, 턴 0")
+	check("M1", game.floor_index == 0 and game.floor_count == 10 and game.turn == 0, "1층, 전체 10층, 턴 0")
 	check("M1", game.hp == 5 and game.player == V(3, 6), "체력 5, 시작 칸 (3,6)")
 	check("M1", game.enemies.size() == 2 and game.spawns_pending == 1, "1층 적 2, 증원 예고 1")
 	var e: Dictionary = game.enemies[0]
@@ -143,8 +179,8 @@ func m9_golden_replay() -> void:
 	check("M9", kills_are(7, 7, 0) and crush_is(1), "4층까지 처치: 밟기 7, 베기 7, 으깨기 1")
 	check("M9", game.enemies.size() == 3 and game.spawns_pending == 2, "5층: 적 3, 증원 예고 2")
 	check("M9", acts(F5), "5층 정답 14행동이 모두 가능한 행동")
-	check("M9", game.state == game.State.RESULT and game.result_won, "5층 클리어 → 결과 화면, 승리")
-	check("M9", game.hp == 5 and kills_are(8, 9, 0) and crush_is(3), "승리 시 체력 5, 처치 밟기 8 · 베기 9 · 오사 0 · 으깨기 3")
+	check("M9", game.state == game.State.PLAY and game.floor_index == 5 and game.turn == 0, "5층 클리어 → 6층 턴 0(체험 구간 끝, 진행 중)")
+	check("M9", game.hp == 5 and kills_are(8, 9, 0) and crush_is(3), "5층까지 체력 5, 처치 밟기 8 · 베기 9 · 오사 0 · 으깨기 3")
 
 
 func m12_touch_input() -> void:
@@ -343,6 +379,145 @@ func m18_standing_slash_loses() -> void:
 	check("M18", kills_are(0, 1, 0) and crush_is(0), "그동안의 처치는 베기 1뿐")
 
 
+# ---------------------------------------------------------------- 3차 (M19~M25)
+
+func m25_main_campaign_replay() -> void:
+	# M9 직후: 6층 턴 0
+	check("M25", game.floor_index == 5 and game.enemies.size() == 2 and bomber_is(0, V(3, 1), 0) and game.spawns_pending == 1, "6층: 폭탄병 (3,1), 졸개, 증원 예고 1")
+	check("M25", game.rewinds_left == 1 and game.sword_wait == 0 and game.bombs.is_empty(), "새 층: 되감기 1, 칼 있음, 폭탄 없음")
+	check("M25", acts(F6), "6층 정답 12행동이 모두 가능한 행동")
+	check("M25", game.state == game.State.PLAY and game.floor_index == 6 and game.turn == 0 and game.hp == 5, "6층 클리어 → 7층 턴 0, 체력 5")
+	check("M25", kills_are(9, 11, 0) and crush_is(3), "6층까지 처치: 밟기 9, 베기 11, 오사 0, 으깨기 3")
+	check("M25", acts(F7), "7층 정답 15행동이 모두 가능한 행동")
+	check("M25", game.floor_index == 7 and game.turn == 0 and kills_are(10, 12, 1) and crush_is(4), "7층 클리어. 누적 밟기 10, 베기 12, 오사 1, 으깨기 4")
+	check("M25", acts(F8), "8층 정답 15행동이 모두 가능한 행동")
+	check("M25", game.floor_index == 8 and game.turn == 0 and kills_are(13, 14, 1) and crush_is(4), "8층 클리어. 누적 밟기 13, 베기 14, 오사 1, 으깨기 4")
+	check("M25", acts(F9), "9층 정답 16행동이 모두 가능한 행동")
+	check("M25", game.floor_index == 9 and game.turn == 0 and kills_are(15, 15, 3) and crush_is(5) and game.hp == 5, "9층 클리어. 누적 밟기 15, 베기 15, 오사 3, 으깨기 5, 체력 5")
+	check("M25", game.enemies.size() == 5 and game.spawns_pending == 2, "10층: 적 5, 증원 예고 2")
+	check("M25", acts(F10), "10층 정답 15행동이 모두 가능한 행동")
+	check("M25", game.state == game.State.RESULT and game.result_won, "10층 클리어 → 결과 화면, 승리")
+	check("M25", game.hp == 5 and kills_are(17, 16, 6) and crush_is(6), "승리 시 체력 5, 처치 밟기 17 · 베기 16 · 오사 6 · 으깨기 6")
+
+
+func m19_bomber_throws() -> void:
+	load_floor([], V(3, 6), [["B", V(3, 3)]])
+	check("M19", bomber_is(0, V(3, 3), 0) and game.enemies[0].get("hp", -1) == 1, "폭탄병: 체력 1, 쿨다운 0")
+	check("M19", bomb_intent(0, V(3, 6)) and game.bombs.is_empty(), "거리 3: 내 칸 (3,6)에 던지기 의도, 아직 폭탄 없음")
+	acts("W")
+	check("M19", one_bomb(V(3, 6), 1) and game.hp == 5, "던진 턴이 끝나면 폭탄 (3,6), 남은 턴 1")
+	check("M19", bomber_is(0, V(3, 3), 3) and game.enemies[0]["intent"] == "move" and game.enemies[0]["dir"] == V(0, 1), "던진 뒤 쿨다운 3, 다음 의도는 아래로 이동")
+	check("M19", game.enemies[0].get("target", V(0, 0)) == V(-1, -1), "던지기가 아닌 의도의 target 은 (-1,-1)")
+	load_floor([], V(3, 6), [["B", V(3, 2)]])
+	check("M19", game.enemies[0]["intent"] == "move" and game.enemies[0]["dir"] == V(0, 1) and game.bombs.is_empty(), "거리 4: 던지지 않고 다가옴")
+	acts("W")
+	check("M19", bomber_is(0, V(3, 3), 0) and bomb_intent(0, V(3, 6)) and game.bombs.is_empty(), "한 칸 다가와 거리 3 → 던지기 의도")
+
+
+func m20_explosion() -> void:
+	load_floor([], V(3, 6), [["B", V(3, 3)]])
+	acts("W W")
+	check("M20", game.hp == 4 and game.bombs.is_empty() and game.turn == 2, "던진 다음 턴이 끝날 때 터짐: 그 칸에 있으면 피해 1")
+	check("M20", bomber_is(0, V(3, 4), 2), "폭탄병은 다가오고 쿨다운 2")
+	load_floor([], V(3, 6), [["B", V(3, 3)]])
+	acts("L")
+	check("M20", one_bomb(V(3, 6), 1) and game.player == V(2, 6), "내가 움직여도 폭탄은 의도가 공개된 칸 (3,6)에 놓인다")
+	acts("L")
+	check("M20", game.hp == 5 and game.bombs.is_empty() and game.player == V(1, 6), "두 칸 비키면 범위 밖: 피해 없음")
+	load_floor([], V(3, 6), [["B", V(3, 3)]])
+	acts("W L")
+	check("M20", game.hp == 4 and game.player == V(2, 6), "한 칸만 비키면 범위(상하좌우) 안: 피해 1")
+
+
+func m21_explosion_hits_enemies() -> void:
+	load_floor([], V(3, 6), [["B", V(3, 3)], ["W", V(5, 5)]])
+	acts("L L")
+	check("M21", kills_are(0, 0, 1) and game.hp == 5, "범위로 걸어 들어온 졸개가 폭발에 죽음(오사 1), 나는 피해 없음")
+	check("M21", game.enemies.size() == 1 and bomber_is(0, V(3, 4), 2), "남은 적은 폭탄병 (3,4)")
+	load_floor([], V(3, 6), [["B", V(3, 3)], ["S", V(5, 5)]])
+	acts("L L")
+	check("M21", game.enemies.size() == 2 and game.enemies[1]["kind"] == "S" and game.enemies[1]["pos"] == V(4, 6) and game.enemies[1].get("hp", -1) == 1, "방패병도 폭발에 다침: (4,6) 체력 1(방패 무효 없음, 밀리지 않음)")
+	check("M21", kills_are(0, 0, 0) and crush_is(0), "죽지 않았으므로 처치 0")
+
+
+func m22_cooldown_and_echo() -> void:
+	load_floor([V(3, 4)], V(3, 6), [["B", V(6, 6)]])
+	check("M22", bomb_intent(0, V(3, 6)), "폭탄병 (6,6): 거리 3, 던지기 의도")
+	acts("W")
+	check("M22", bomber_is(0, V(6, 6), 3) and one_bomb(V(3, 6), 1), "던진 턴: 쿨다운 3(이 턴에는 줄지 않는다)")
+	acts("W")
+	check("M22", game.hp == 4 and bomber_is(0, V(5, 6), 2), "폭발에 맞음(체력 4), 폭탄병 (5,6) 쿨다운 2")
+	acts("W")
+	check("M22", bomber_is(0, V(4, 6), 1) and game.enemies[0]["intent"] == "move" and game.enemies[0]["dir"] == V(-1, 0), "붙은 폭탄병은 치지 않는다: 쿨다운 1, 의도는 내 쪽으로 이동")
+	acts("W")
+	check("M22", bomber_is(0, V(4, 6), 0) and bomb_intent(0, V(3, 6)) and game.hp == 4, "나에게 막혀 제자리, 쿨다운 0 → 다시 던지기 의도")
+	check("M22", game.echo_active and game.echo_pos == V(3, 6), "메아리가 내 칸 (3,6)에 겹쳐 있음")
+	acts("W")
+	check("M22", one_bomb(V(3, 6), 1) and bomber_is(0, V(4, 6), 3), "두 번째 폭탄")
+	acts("W")
+	check("M22", game.hp == 3, "메아리는 폭발을 막지 않는다: 체력 3")
+	check("M22", game.enemies.is_empty() and kills_are(0, 0, 1) and game.state == game.State.RESULT and game.result_won, "폭탄병도 제 폭탄에 죽음(오사 1) → 승리")
+
+
+func m23_rewind_restores() -> void:
+	# (가) 칼과 발자국
+	load_floor([V(1, 0), V(0, 1)], V(3, 6), [["W", V(0, 0)]])
+	check("M23", game.rewinds_left == 1, "층 시작: 되감기 1")
+	acts("U SU W")
+	check("M23", game.turn == 3 and game.sword_wait == 2, "U SU W 뒤 turn 3, sword_wait 2")
+	check("M23", game.debug_rewind(), "되감기")
+	check("M23", game.turn == 2 and game.player == V(3, 5) and game.sword_wait == 3 and game.last_action == "SU", "직전 턴 취소: turn 2, sword_wait 3, last_action SU")
+	check("M23", game.footprints.size() == 2 and fp_is(0, V(3, 5), "U", 2) and fp_is(1, V(3, 5), "SU", 3), "발자국도 한 턴 전으로")
+	check("M23", game.rewinds_left == 0 and game.state == game.State.PLAY, "되감기 0 남음")
+	# (나) 처치와 적
+	load_floor([V(1, 0), V(0, 1)], V(3, 6), [["W", V(3, 2)], ["W", V(0, 0)]])
+	acts("U D R U")
+	check("M23", kills_are(1, 0, 0) and game.enemies.size() == 1 and game.echo_active, "밟기 처치 직후: 밟기 1, 적 1")
+	check("M23", game.debug_rewind(), "되감기")
+	check("M23", kills_are(0, 0, 0) and game.enemies.size() == 2 and game.turn == 3 and game.player == V(4, 6), "처치 수와 적이 돌아옴: 밟기 0, 적 2, turn 3")
+	check("M23", game.enemies[0]["id"] == 0 and game.enemies[0]["pos"] == V(3, 5) and game.enemies[0]["intent"] == "move" and game.enemies[0]["dir"] == V(1, 0), "졸개 0번은 (3,5), 의도도 그대로(오른쪽 이동)")
+	check("M23", not game.echo_active, "메아리도 한 턴 전(아직 없음)")
+	acts("U")
+	check("M23", kills_are(1, 0, 0) and game.enemies.size() == 1, "같은 행동을 다시 하면 같은 결과")
+	# (다) 폭탄과 체력
+	load_floor([], V(3, 6), [["B", V(3, 3)]])
+	acts("W L")
+	check("M23", game.hp == 4 and game.bombs.is_empty(), "폭발에 맞은 직후: 체력 4")
+	check("M23", game.debug_rewind(), "되감기")
+	check("M23", game.hp == 5 and one_bomb(V(3, 6), 1) and game.player == V(3, 6) and game.turn == 1 and bomber_is(0, V(3, 3), 3), "체력 5, 폭탄 (3,6) 남은 턴 1, 폭탄병 (3,3) 쿨다운 3")
+	acts("L")
+	check("M23", game.hp == 4, "같은 행동을 다시 하면 같은 결과(체력 4)")
+
+
+func m24_rewind_limits() -> void:
+	game.debug_load_floors([
+		{"walls": [V(1, 0), V(0, 1)], "start": V(3, 6), "enemies": [["W", V(3, 5)], ["W", V(0, 0)]], "spawns": []},
+	])
+	check("M24", not game.debug_rewind() and game.rewinds_left == 1 and game.turn == 0, "턴 0에서는 되감을 수 없고 횟수도 줄지 않는다")
+	acts("W")
+	check("M24", game.hp == 4 and game.turn == 1, "졸개에게 맞음")
+	check("M24", game.debug_rewind() and game.hp == 5 and game.turn == 0 and game.rewinds_left == 0 and game.last_action == "", "되감기: 체력 5, turn 0, last_action 비어 있음")
+	acts("W")
+	check("M24", not game.debug_rewind() and game.hp == 4 and game.turn == 1, "층마다 한 번: 두 번째는 불가, 아무것도 바뀌지 않음")
+	# 새 층에서 다시 1회, 버튼으로도 된다
+	game.debug_load_floors([
+		{"walls": [], "start": V(3, 6), "enemies": [["W", V(3, 2)]], "spawns": []},
+		{"walls": [V(1, 0), V(0, 1)], "start": V(3, 6), "enemies": [["W", V(0, 0)]], "spawns": []},
+	])
+	acts("U D R")
+	check("M24", game.debug_rewind() and game.turn == 2 and game.player == V(3, 6) and game.rewinds_left == 0, "1층에서 되감기를 씀")
+	acts("R U")
+	check("M24", game.floor_index == 1 and game.turn == 0 and kills_are(1, 0, 0), "1층 클리어 → 2층")
+	check("M24", game.rewinds_left == 1 and not game.debug_rewind(), "새 층: 되감기 1, 턴 0이라 아직 못 씀(층을 깬 행동은 되돌릴 수 없다)")
+	acts("U")
+	game.debug_press("rewind")
+	check("M24", game.turn == 0 and game.player == V(3, 6) and game.rewinds_left == 0 and game.footprints.is_empty(), "되감기 버튼으로 한 턴 되돌아감")
+	# 결과 화면
+	load_floor([], V(3, 6), [["A", V(3, 5)]])
+	acts("SU W W W")
+	check("M24", game.state == game.State.RESULT and not game.debug_rewind() and game.rewinds_left == 0, "결과 화면에서는 되감을 수 없다")
+
+
 func m11_pressure_and_turn_limit() -> void:
 	# 졸개는 (0,0)에 갇혀 있고, 증원 칸 (3,0)도 벽으로 막혀 있어 플레이어는 안전하다
 	load_floor([V(1, 0), V(0, 1), V(2, 0), V(4, 0), V(3, 1)], V(3, 6), [["W", V(0, 0)]])
@@ -369,5 +544,5 @@ func m10_defeat_and_restart() -> void:
 	check("M10", game.hp == 0 and game.state == game.State.RESULT and not game.result_won, "체력 0 → 결과 화면, 패배")
 	check("M10", not game.debug_act("W"), "결과 화면에서는 행동 불가")
 	game.debug_tap(Vector2(270, 480))
-	check("M10", game.state == game.State.PLAY and game.floor_index == 0 and game.floor_count == 5, "탭하면 기본 5개 층으로 새 런")
+	check("M10", game.state == game.State.PLAY and game.floor_index == 0 and game.floor_count == 10, "탭하면 기본 10개 층으로 새 런")
 	check("M10", game.hp == 5 and game.turn == 0 and kills_are(0, 0, 0) and game.enemies.size() == 2, "체력 5, 턴 0, 처치 0, 1층 적 2")
