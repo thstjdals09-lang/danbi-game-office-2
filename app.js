@@ -32,7 +32,7 @@
   var PAGE = 40;
 
   var state = { games: [], runs: [], events: [], builds: [], decisions: [], limits: {}, play: null, ceo: false, email: null };
-  var ui = { view: "home", filter: "all", game: null, query: "", shown: PAGE, onlyStar: false, open: {} };
+  var ui = { view: "home", filter: "all", game: null, query: "", shown: PAGE, onlyStar: false, idea: null, open: {} };
 
   // ---------------------------------------------------------------- 유틸
 
@@ -451,38 +451,49 @@
     var visible = items.slice(0, ui.shown);
     $("more").hidden = items.length <= ui.shown;
     $("more").textContent = "더 보기 (" + (items.length - ui.shown) + "개 남음)";
+    var box = $("ideas");
+    ui.ideaIds = visible.map(function (g) { return g.id; });
     if (!visible.length) {
-      $("ideas").innerHTML = '<div class="empty">' + (ui.query ? "검색 결과가 없어요." : ui.onlyStar ? "★ 표시한 아이디어가 없어요." : "대기 중인 아이디어가 없어요.") + "</div>";
+      box.className = "ideas";
+      box.innerHTML = '<div class="empty">' + (ui.query ? "검색 결과가 없어요." : ui.onlyStar ? "★ 표시한 아이디어가 없어요." : "대기 중인 아이디어가 없어요.") + "</div>";
       return;
     }
 
-    function row(g) {
-      var key = "i:" + g.id;
-      var chips = '<div class="chips"><span class="chip verb">' + esc(g.core_verb) + "</span>" + (g.genre ? '<span class="chip">' + esc(g.genre) + "</span>" : "") + "</div>";
-      var body = '<div class="p">' + esc(g.pitch) + '</div><div class="p" style="color:var(--dim)">' + esc(g.fun_hypothesis) + "</div>" + chips;
-      if (g.idea_scores) {
-        body += '<div class="scores">' + Object.keys(SCORE_LABEL).map(function (k) {
-          var v = g.idea_scores[k];
-          return '<span class="sc' + (v < 70 ? " low" : v >= 85 ? " high" : "") + '">' + SCORE_LABEL[k] + ' <b class="num">' + esc(v) + "</b></span>";
-        }).join("") + "</div>";
-      }
-      if (g.why_promoted && g.why_promoted.length) {
-        body += '<div class="label">승격 이유</div><ul class="why">' + g.why_promoted.map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul>";
-      }
-      if (g.next_test) body += '<div class="label">먼저 검증할 것</div><div class="next-test">' + esc(g.next_test) + "</div>";
-      body += '<div class="acts"><button class="btn bad small" type="button" data-tri="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div>";
-      return '<details class="irow" data-fold="' + key + '"' + foldOpen(key) + '><summary><span class="no num">' + turn[g.id] +
-        '</span><button class="star" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred +
-        '" aria-label="먼저 디자인하기"' + dis() + '>★</button><span class="line"><span class="t">' + esc(g.title) + '</span><span class="d">' + esc(g.pitch) +
-        '</span></span><span class="fold-side">' + (turn[g.id] === 1 ? '<span class="chip next">다음</span>' : "") +
-        '<span class="chev">›</span></span></summary><div class="fold-body">' + body + "</div></details>";
+    // 왼쪽은 훑어보는 목록, 오른쪽은 고른 아이디어 하나. 좁은 화면에서는 목록 ↔ 상세를 오간다
+    var narrow = window.matchMedia("(max-width: 720px)").matches;
+    var sel = visible.find(function (g) { return g.id === ui.idea; });
+    if (!sel) {
+      ui.idea = null;  // 버렸거나 검색에서 빠졌다
+      if (!narrow) sel = visible[Math.min(ui.ideaIdx || 0, visible.length - 1)];
+    }
+    ui.ideaIdx = sel ? visible.indexOf(sel) : 0;
+
+    function item(g) {
+      return '<button class="iitem" type="button" data-idea="' + g.id + '"' + (sel && g.id === sel.id ? ' aria-current="true"' : "") + '><span class="no num">' + turn[g.id] +
+        '</span><span class="tx"><span class="t">' + esc(g.title) + '</span><span class="v">' + esc(g.core_verb) + '</span></span><span class="mk">' + (g.starred ? "★" : "") + "</span></button>";
     }
     function group(label, list) {
-      return list.length ? (label ? '<div class="label">' + label + " · " + list.length + "</div>" : "") + '<div class="ilist">' + list.map(row).join("") + "</div>" : "";
+      return list.length ? (label ? '<div class="label">' + label + " · " + list.length + "</div>" : "") + '<div class="ilist">' + list.map(item).join("") + "</div>" : "";
+    }
+    function fact(label, html) { return html ? "<div><dt>" + label + "</dt><dd>" + html + "</dd></div>" : ""; }
+    function detail(g) {
+      var bars = g.idea_scores ? '<div class="bars">' + Object.keys(SCORE_LABEL).map(function (k) {
+        var v = Number(g.idea_scores[k]) || 0;
+        return "<div" + (v < 70 ? ' class="low"' : "") + "><span>" + SCORE_LABEL[k] + '</span><i><b style="width:' + Math.max(0, Math.min(100, v)) + '%"></b></i><span class="n num">' + v + "</span></div>";
+      }).join("") + "</div>" : "";
+      var why = g.why_promoted && g.why_promoted.length ? "<ul>" + g.why_promoted.map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul>" : "";
+      return '<article class="iview"><button class="back iv-back" type="button" data-idea="">← 목록</button>' +
+        '<div class="iv-head"><div><div class="iv-turn">' + (turn[g.id] === 1 ? "다음 디자인 차례" : turn[g.id] + "번째 차례") + (g.genre ? " · " + esc(g.genre) : "") +
+        "</div><h3>" + esc(g.title) + '</h3></div><div class="acts"><button class="btn small istar" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred + '"' + dis() +
+        '>★ 먼저 디자인</button><button class="btn bad small" type="button" data-tri="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div></div>" +
+        '<p class="iv-pitch">' + esc(g.pitch) + '</p><dl class="iv-facts">' +
+        fact("조작", esc(g.core_verb)) + fact("재미", esc(g.fun_hypothesis)) + fact("먼저 검증할 것", esc(g.next_test)) + fact("승격 이유", why) + fact("연구소 평가", bars) +
+        "</dl></article>";
     }
     var first = visible.filter(function (g) { return g.starred; });
     var rest = visible.filter(function (g) { return !g.starred; });
-    $("ideas").innerHTML = group(first.length && rest.length ? "★ 먼저 디자인" : "", first) + group(first.length && rest.length ? "들어온 순" : "", rest);
+    box.className = "ideas" + (ui.idea ? " open" : "");
+    box.innerHTML = '<div class="ipick">' + group(first.length && rest.length ? "★ 먼저 디자인" : "", first) + group(first.length && rest.length ? "들어온 순" : "", rest) + "</div>" + (sel ? detail(sel) : "");
   }
 
   // ---------------------------------------------------------------- 공장
@@ -641,8 +652,8 @@
     if (d.doc) { openDoc(state.games.find(function (x) { return x.id === d.doc; })); return; }
     if (d.doctab) { showDoc(d.doctab); return; }
     if (d.play) { openPlayer(state.games.find(function (x) { return x.id === d.play; })); return; }
+    if ("idea" in d) { ui.idea = d.idea || null; renderIdeas(); if (!d.idea) window.scrollTo(0, 0); return; }
     if (d.star) {
-      e.preventDefault();  // 별은 접힌 줄 안에 있다. 누를 때 줄이 펼쳐지지 않게
       var sg = state.games.find(function (x) { return x.id === d.star; });
       await act("ceo_star", { p_game: sg.id, p_starred: !sg.starred }, sg.starred ? "별표 해제" : "우선 처리로 지정");
       return;
@@ -670,13 +681,20 @@
   // 접힌 줄을 펼친 상태는 새로고침(1분마다 자동) 뒤에도 유지한다
   document.addEventListener("toggle", function (e) {
     var key = e.target.dataset && e.target.dataset.fold;
-    if (!key) return;
-    ui.open[key] = e.target.open;
-    // 아이디어 줄은 한 번에 하나만 펼친다
-    if (e.target.open && key.indexOf("i:") === 0) {
-      document.querySelectorAll("details.irow[open]").forEach(function (d) { if (d !== e.target) d.open = false; });
-    }
+    if (key) ui.open[key] = e.target.open;
   }, true);
+  // 아이디어 탭: ↑↓ 로 목록을 넘겨 본다
+  document.addEventListener("keydown", function (e) {
+    if (ui.view !== "ideas" || (e.key !== "ArrowDown" && e.key !== "ArrowUp") || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || document.querySelector("dialog[open]")) return;
+    var ids = ui.ideaIds || [];
+    if (!ids.length) return;
+    e.preventDefault();
+    ui.idea = ids[Math.max(0, Math.min(ids.length - 1, (ui.ideaIdx || 0) + (e.key === "ArrowDown" ? 1 : -1)))];
+    renderIdeas();
+    var cur = document.querySelector(".iitem[aria-current]");
+    if (cur) cur.scrollIntoView({ block: "nearest" });
+  });
   window.addEventListener("hashchange", function () { setView(location.hash.slice(1)); });
 
   $("search").addEventListener("input", function (e) { ui.query = e.target.value.trim(); ui.shown = PAGE; renderIdeas(); });
