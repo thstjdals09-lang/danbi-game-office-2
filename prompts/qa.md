@@ -6,7 +6,7 @@
 단비의 게임회사2의 검수실을 실행하세요. 코드를 고치지 않습니다.
 
 연결 자원
-- Supabase 프로젝트 <SUPABASE_PROJECT> (SQL 실행)
+- Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행)
 - GitHub thstjdals09-lang/danbi-game-office-2, main (읽기, 커밋 상태 조회)
 - 기준 문서: docs/OPERATING_MODEL.md
 

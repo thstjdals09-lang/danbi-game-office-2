@@ -6,7 +6,7 @@
 단비의 게임회사2의 빌드실을 실행하세요.
 
 연결 자원
-- Supabase 프로젝트 <SUPABASE_PROJECT> (SQL 실행)
+- Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행)
 - GitHub thstjdals09-lang/danbi-game-office-2, main (읽기/쓰기)
 - 기준 문서: docs/OPERATING_MODEL.md 의 "게임 저장소 규칙"
 - 참고 구현: games/first-lantern/ (구조, debug 훅, tests/smoke.gd 작성 방식)
