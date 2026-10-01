@@ -41,18 +41,19 @@ func _process(_delta: float) -> bool:
 			game.debug_tap(Vector2(270, 480))
 		70:
 			shot("02-play-floor1-start")          # 1층 시작: 졸개 2, 이동 의도, 증원 예고
+			game.debug_press("slash")             # 칼이 손에 있을 때(베기를 쓰기 전)에 켠다
+		74:
+			shot("05-slash-mode")                 # 베기 토글 켜짐 (2차: 칼 하나 때문에 베기를 쓴 뒤에는 켜지지 않으므로 앞으로 옮김)
+			game.debug_press("slash")
 			acts("U SU R")
 		130:
-			shot("03-footprints")                 # 발자국 ①②③ (②는 베기 표시)
+			shot("03-footprints")                 # 발자국 ①②③ (②는 베기 표시). 2차: 칼이 없어 버튼이 "칼 ②"
 			game._press(Vector2(270, 820))
 			game._drag(Vector2(270, 750))
 		134:
 			shot("04-preview-move")               # 누른 채 위로 민 미리보기: 도착 칸 윤곽 + ③
 			game._release(Vector2(270, 818))      # 되돌려 떼기 = 취소
-			game.debug_press("slash")
 		138:
-			shot("05-slash-mode")                 # 베기 토글 켜짐
-			game.debug_press("slash")
 			game.debug_load_floors([Content.FLOORS[1]])
 		200:
 			shot("06-archer-aim")                 # 2층: 궁수 조준 사선(빗금)과 "!"
