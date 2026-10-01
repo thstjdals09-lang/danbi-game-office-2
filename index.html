@@ -77,17 +77,29 @@
   .card.bad { border-color: rgba(255,125,142,.4); }
   .card-title { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 16px; font-weight: 700; }
   .p { font-size: 13px; color: var(--muted); }
-  /* 빌드 결재: 왼쪽에 주 화면 시안, 오른쪽에 요약과 결정 */
-  .props { display: grid; gap: 12px; }
-  .prop { display: grid; grid-template-columns: 150px 1fr; gap: 14px; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px; }
-  .prop .mock { display: grid; place-items: center; aspect-ratio: 9 / 16; background: #0b1627; border-radius: 10px; overflow: hidden; align-self: start; }
-  .prop .mock img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .prop .mock .ph { display: none; font-size: 12px; color: var(--muted); }
-  .prop .mock.none img { display: none; }
-  .prop .mock.none .ph { display: block; }
-  .prop .pbody { display: grid; gap: 10px; align-content: start; min-width: 0; }
-  .prop .summary { max-height: 9.5em; overflow: auto; }
-  @media (max-width: 560px) { .prop { grid-template-columns: 96px 1fr; padding: 12px; } }
+  /* 빌드 결재: 시안 카드의 격자(수십 건을 한눈에) + 누르면 뜨는 결재 창 */
+  .props { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+  .pcard { text-align: left; padding: 0; background: var(--panel); border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden; cursor: pointer; display: block; color: inherit; font: inherit; }
+  .pcard:hover { border-color: var(--line); }
+  .pthumb { display: grid; place-items: center; aspect-ratio: 1 / 1; background: #0b1627; overflow: hidden; }
+  .pthumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .pthumb .ph, .pv-mock .ph { display: none; font-size: 12px; color: var(--muted); }
+  .pthumb.none img, .pv-mock.none img { display: none; }
+  .pthumb.none .ph, .pv-mock.none .ph { display: block; }
+  .pcard .pt { font-weight: 700; font-size: 13px; padding: 8px 10px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pcard .pt { display: block; }
+  .pcard .pd { font-size: 12px; color: var(--muted); margin: 0 10px 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pview { width: min(860px, calc(100vw - 24px)); }
+  .pv { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .pv-mock { display: grid; place-items: center; background: #0b1627; border-radius: 12px; overflow: hidden; min-height: 160px; }
+  .pv-mock img { max-width: 100%; max-height: min(64vh, 620px); object-fit: contain; display: block; }
+  .pv-text { display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .pv-acts { position: sticky; bottom: -20px; background: var(--panel); padding: 10px 0 4px; margin-bottom: -4px; }
+  @media (max-width: 640px) {
+    .props { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+    .pv { grid-template-columns: 1fr; }
+    .pv-mock img { max-height: 46vh; }
+  }
   .summary { font-size: 13px; color: var(--text); white-space: pre-wrap; border-left: 2px solid var(--line); padding-left: 10px; }
   .note { font-size: 13px; color: var(--amber); white-space: pre-wrap; background: rgba(243,200,106,.07); border-radius: 8px; padding: 8px 10px; }
   .acts { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -322,7 +334,7 @@
   <section class="view" id="view-home">
     <div class="tiles" id="tiles"></div>
     <div class="sec" id="propSec" hidden>
-      <div class="sec-head"><h2>빌드 결재</h2><span>설계와 화면 시안을 보고, 만들지 정해 주세요</span></div>
+      <div class="sec-head"><h2>빌드 결재</h2><span id="propSide"></span></div>
       <div class="props" id="props"></div>
     </div>
     <div class="sec">
@@ -426,6 +438,7 @@
   </div>
 </dialog>
 
+<dialog id="propDlg"><div class="iview pview" id="propBody"></div></dialog>
 <dialog id="ideaDlg"><div class="iview" id="ideaBody"></div></dialog>
 
 <dialog id="imgDlg">

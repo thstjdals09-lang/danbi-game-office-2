@@ -283,19 +283,15 @@
 
     // 빌드 결재: 설계 요약과 주 화면 시안을 보고, 만들지 정한다(빌드가 가장 비싼 단계라 그 앞에서 거른다)
     $("propSec").hidden = !props.length;
-    $("props").innerHTML = props.map(function (g) {
-      var mock = "https://raw.githubusercontent.com/" + CFG.repo + "/main/games/" + encodeURIComponent(g.slug) + "/design/mock/main.png";
-      return '<article class="prop"><a class="mock" href="' + esc(mock) + '" target="_blank" rel="noopener"><img loading="lazy" alt="주 화면 시안" src="' + esc(mock) +
-        '" onerror="this.parentNode.classList.add(&quot;none&quot;)"><span class="ph">화면 시안 없음</span></a>' +
-        '<div class="pbody"><div class="card-title">' + esc(g.title) + '<span class="mono">' + esc(versionText(g)) + "</span></div>" +
-        '<div class="p">' + esc(g.pitch) + "</div>" +
-        (g.design_summary ? '<div class="summary">' + esc(g.design_summary) + "</div>" : "") +
-        '<div class="acts">' + docButton(g) +
-        '<button class="btn go" type="button" data-dsn="go" data-id="' + g.id + '"' + dis() + ">이대로 만든다</button>" +
-        '<button class="btn" type="button" data-dsn="redo" data-id="' + g.id + '"' + dis() + ">설계 다시</button>" +
-        '<button class="btn ghost" type="button" data-dsn="hold" data-id="' + g.id + '"' + dis() + ">보류</button>" +
-        '<button class="btn bad" type="button" data-dsn="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div></div></article>";
+    // 수십 건이 쌓여도 한눈에 훑도록 시안만 작은 카드로 깔고, 누르면 결재 창에서 하나씩 넘기며 정한다
+    $("propSide").innerHTML = props.length + "건 · 눌러서 하나씩 넘기며 정해요" +
+      (props.length ? ' <button class="btn small" type="button" data-prop="' + props[0].id + '">처음부터 보기</button>' : "");
+    $("props").innerHTML = props.map(function (g, n) {
+      return '<button class="pcard" type="button" data-prop="' + g.id + '"><span class="pthumb"><img loading="lazy" alt="" src="' + esc(mockOf(g)) +
+        '" onerror="this.parentNode.classList.add(&quot;none&quot;)"><span class="ph">시안 없음</span></span>' +
+        '<span class="pt">' + (g.starred ? "★ " : "") + esc(g.title) + '</span><span class="pd">' + esc(g.pitch) + "</span></button>";
     }).join("");
+    renderPropDlg(props);
 
     // 플레이테스트: 라이브러리와 같은 카드. 눌러서 게임 상세에서 플레이하고 판정한다
     $("playtest").innerHTML = play.length ? play.map(gameCard).join("")
@@ -527,6 +523,41 @@
     if (!dlg.open) dlg.showModal();
   }
 
+  function mockOf(g) {
+    return "https://raw.githubusercontent.com/" + CFG.repo + "/main/games/" + encodeURIComponent(g.slug) + "/design/mock/main.png";
+  }
+
+  // 빌드 결재 창: 시안을 크게 보고 정한다. 정하면 그 자리의 다음 건으로 넘어간다(← → 로도 넘긴다)
+  function renderPropDlg(items) {
+    var dlg = $("propDlg");
+    ui.propIds = items.map(function (g) { return g.id; });
+    if (!ui.prop) { if (dlg.open) dlg.close(); return; }
+    var i = ui.propIds.indexOf(ui.prop);
+    if (i < 0) {  // 방금 결재해서 목록에서 빠졌다 → 그 자리의 다음 건
+      if (!items.length) { ui.prop = null; if (dlg.open) dlg.close(); return; }
+      i = Math.min(ui.propIdx || 0, items.length - 1);
+      ui.prop = items[i].id;
+    }
+    ui.propIdx = i;
+    var g = items[i];
+    function nav(to, label, text) { return '<button class="btn ghost small" type="button" aria-label="' + label + '"' + (to ? ' data-prop="' + to.id + '"' : " disabled") + ">" + text + "</button>"; }
+    $("propBody").innerHTML =
+      '<div class="iv-top"><span class="iv-turn">빌드 결재 · ' + esc(versionText(g)) + (g.genre ? " · " + esc(g.genre) : "") +
+      '</span><span class="iv-nav">' + nav(items[i - 1], "이전", "‹") + '<span class="num">' + (i + 1) + " / " + items.length + "</span>" + nav(items[i + 1], "다음", "›") +
+      '<button class="btn ghost small" type="button" data-close>닫기</button></span></div>' +
+      '<div class="pv"><a class="pv-mock" href="' + esc(mockOf(g)) + '" target="_blank" rel="noopener"><img alt="주 화면 시안" src="' + esc(mockOf(g)) +
+      '" onerror="this.parentNode.classList.add(&quot;none&quot;)"><span class="ph">화면 시안이 없어요</span></a>' +
+      '<div class="pv-text"><h3>' + esc(g.title) + '</h3><p class="iv-pitch">' + esc(g.pitch) + "</p>" +
+      (g.design_summary ? '<div class="summary">' + esc(g.design_summary) + "</div>" : "") + "</div></div>" +
+      '<div class="acts pv-acts">' + docButton(g) +
+      '<button class="btn go" type="button" data-dsn="go" data-id="' + g.id + '"' + dis() + ">이대로 만든다</button>" +
+      '<button class="btn" type="button" data-dsn="redo" data-id="' + g.id + '"' + dis() + ">설계 다시</button>" +
+      '<button class="btn ghost" type="button" data-dsn="hold" data-id="' + g.id + '"' + dis() + ">보류</button>" +
+      '<button class="btn bad" type="button" data-dsn="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div>";
+    if (!dlg.open) dlg.showModal();
+    $("propBody").scrollTop = 0;
+  }
+
   // ---------------------------------------------------------------- 공장
 
   function deptInfo(role) {
@@ -699,6 +730,7 @@
     if (d.doctab) { showDoc(d.doctab); return; }
     if (d.play) { openPlayer(state.games.find(function (x) { return x.id === d.play; })); return; }
     if ("idea" in d) { ui.idea = d.idea || null; renderIdeas(); return; }
+    if ("prop" in d) { ui.prop = d.prop || null; renderHome(); return; }
     if (d.star) {
       var sg = state.games.find(function (x) { return x.id === d.star; });
       await act("ceo_star", { p_game: sg.id, p_starred: !sg.starred }, sg.starred ? "별표 해제" : "우선 처리로 지정");
@@ -706,6 +738,7 @@
     }
     if (d.dsn && g) {
       var dnote = null;
+      ui.propIdx = (ui.propIds || []).indexOf(g.id);
       if (d.dsn === "redo") {
         dnote = await askNote(g.title + " · 설계 다시", "무엇이 아쉬운지 적어 주세요. 디자인실이 이 메모를 읽고 새 판을 만들어요.", true);
         if (!dnote) return;
@@ -751,6 +784,16 @@
     ui.idea = to;
     renderIdeas();
   });
+  document.addEventListener("keydown", function (e) {
+    if (!$("propDlg").open || $("noteDlg").open || (e.key !== "ArrowRight" && e.key !== "ArrowLeft") || e.altKey || e.ctrlKey || e.metaKey) return;
+    var to = (ui.propIds || [])[(ui.propIdx || 0) + (e.key === "ArrowRight" ? 1 : -1)];
+    if (!to) return;
+    e.preventDefault();
+    ui.prop = to;
+    renderHome();
+  });
+  $("propDlg").addEventListener("close", function () { ui.prop = null; });
+  $("propDlg").addEventListener("click", function (e) { if (e.target === e.currentTarget) e.currentTarget.close(); });
   $("ideaDlg").addEventListener("close", function () { ui.idea = null; });
   $("ideaDlg").addEventListener("click", function (e) { if (e.target === e.currentTarget) e.currentTarget.close(); });
   window.addEventListener("hashchange", function () { setView(location.hash.slice(1)); });
@@ -793,6 +836,17 @@
     };
     var games = [
       G("gp", "backdraft-crew", "불길 속으로", "문을 열면 숨죽은 불이 되살아나는 건물에서 사람을 업어 나온다.", "문 여닫기", "이 문을 열어도 되는가", "proposed", { stage_changed_at: t(5), design_version: 1, design_summary: "소방관 한 명을 따라가는 화면. 닫힌 방 안은 보이지 않고 문이 말해 준다.\n핵심 판단: 어느 문을 열고 닫을까 / 물을 어디에 쓸까.\n시뮬레이션: 문 판단이 구조율을 가른다." }),
+      G("gp1", "sample-1", "예시 제안 1", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(7), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp2", "sample-2", "예시 제안 2", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(8), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp3", "sample-3", "예시 제안 3", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(9), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp4", "sample-4", "예시 제안 4", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(10), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp5", "sample-5", "예시 제안 5", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(11), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp6", "sample-6", "예시 제안 6", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(12), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp7", "sample-7", "예시 제안 7", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(13), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp8", "sample-8", "예시 제안 8", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(14), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp9", "sample-9", "예시 제안 9", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(15), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp10", "sample-10", "예시 제안 10", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(16), design_version: 1, design_summary: "예시 요약 한 줄." }),
+      G("gp11", "sample-11", "예시 제안 11", "빌드 결재가 많이 쌓였을 때의 모습을 보기 위한 예시 제안이에요.", "끌기", "재미 가설", "proposed", { stage_changed_at: t(17), design_version: 1, design_summary: "예시 요약 한 줄." }),
       G("g1", "first-lantern", "First Lantern", "꺼지기 전에 등불을 눌러 밝힌다.", "탭", "점점 빨라지는 불빛을 놓치지 않으려는 긴장감", "playtest", { attempt: 1, stage_changed_at: t(40), design_version: 1, spec_version: 1, design_summary: "한 손가락 타이밍 게임.\n핵심 판단: 어느 등불부터 누를까." }),
       G("g2", "night-bus-driver", "밤버스 기사", "졸린 승객을 정류장에 맞춰 깨운다.", "길게 누르기", "타이밍을 재는 손맛", "building", { attempt: 1, lease_until: new Date(now + 30 * 60000).toISOString() }),
       G("g3", "moon-crane", "달 크레인", "흔들리는 달 조각을 쌓아 탑을 만든다.", "드래그", "무너질 듯 말 듯한 아슬아슬함", "ready", { starred: true }),
