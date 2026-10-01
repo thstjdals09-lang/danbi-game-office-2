@@ -1,7 +1,7 @@
 extends RefCounted
 ## 메아리 발자국 — 한 층의 규칙. 노드·그리기·시간 없음.
-## 기준 구현: design/sim/sim.py 의 Game 클래스(졸개 W, 궁수 A, 방패병 S).
-## design/FIRST_BUILD.md "규칙 확정" + design/BUILD_2.md "바뀌는 규칙·새 규칙"과 같은 순서.
+## 기준 구현: design/sim/sim.py 의 Game 클래스(졸개 W, 궁수 A, 방패병 S, 폭탄병 B).
+## design/FIRST_BUILD.md "규칙 확정" + design/BUILD_2.md + design/BUILD_3.md "바뀌는 규칙·새 규칙"과 같은 순서.
 
 const N := 7
 const DELAY := 3
@@ -11,7 +11,11 @@ const SQUEEZE_TURN := 30
 const SQUEEZE_EVERY := 3
 const SQUEEZE_CELL := Vector2i(3, 0)
 const TURN_LIMIT := 60
-const ENEMY_HP := {"W": 1, "A": 1, "S": 2}
+const ENEMY_HP := {"W": 1, "A": 1, "S": 2, "B": 1}
+const BOMB_FUSE := 2              # 던질 때의 남은 턴. 던진 턴의 폭탄 단계에서 바로 1이 된다
+const BOMB_RANGE := 3             # 이 거리 안이면 던진다
+const BOMB_COOL := 3
+const NO_CELL := Vector2i(-1, -1)
 
 # 방향 순서(동점 처리): 위 → 오른쪽 → 아래 → 왼쪽  (sim.py DORDER)
 const DORDER: Array[String] = ["U", "R", "D", "L"]
@@ -22,7 +26,8 @@ var player := Vector2i.ZERO
 var hp := HP_MAX
 var turn := 0
 var hist: Array = []              # hist[k] = {"pos": Vector2i, "act": String}  (sim.py hist)
-var enemies: Array = []           # id 오름차순. {"id","kind","pos","hp","face","intent","dir"}
+var enemies: Array = []           # id 오름차순. {"id","kind","pos","hp","face","cool","intent","dir","target"}
+var bombs: Array = []             # 던진 순서. {"pos": Vector2i, "fuse": int}  (sim.py bombs)
 var next_id := 0
 var spawns: Array = []            # [turn, kind, pos]
 var kills: Dictionary             # 런 단위 누적. main 이 넘겨 준 것을 그대로 쓴다
@@ -39,6 +44,7 @@ func setup(floor_data: Dictionary, start_hp: int, run_kills: Dictionary) -> void
 	turn = 0
 	hist = [{"pos": player, "act": "start"}]
 	enemies = []
+	bombs = []
 	next_id = 0
 	for e in floor_data["enemies"]:
 		_add_enemy(e[0], e[1])
@@ -53,7 +59,7 @@ func setup(floor_data: Dictionary, start_hp: int, run_kills: Dictionary) -> void
 ## sim.py Enemy.__init__ 대응: 체력은 종류별, 처음엔 아래를 본다
 func _add_enemy(kind: String, pos: Vector2i) -> Dictionary:
 	var e := {"id": next_id, "kind": kind, "pos": pos, "hp": ENEMY_HP.get(kind, 1), "face": Vector2i(0, 1),
-		"intent": "none", "dir": Vector2i.ZERO}
+		"cool": 0, "intent": "none", "dir": Vector2i.ZERO, "target": NO_CELL}
 	enemies.append(e)
 	next_id += 1
 	return e
@@ -159,7 +165,41 @@ func danger_cells() -> Dictionary:
 			while inb(q) and not walls.has(q) and q != block:
 				d[q] = true
 				q += e["dir"]
+	for b in bombs:
+		if b["fuse"] == 1:
+			for c in blast_cells(b["pos"]):
+				d[c] = true
 	return d
+
+
+## 폭발 범위: 그 칸, 위, 오른쪽, 아래, 왼쪽 (sim.py step 4번의 cells). 보드 밖과 벽은 뺀다(아무도 없다)
+func blast_cells(pos: Vector2i) -> Array:
+	var out: Array = []
+	for c in [pos, pos + DIRS["U"], pos + DIRS["R"], pos + DIRS["D"], pos + DIRS["L"]]:
+		if inb(c) and not walls.has(c):
+			out.append(c)
+	return out
+
+
+## 되감기용: 규칙 상태 전체의 복사본 (BUILD_3.md 되감기)
+func snapshot() -> Dictionary:
+	return {"player": player, "hp": hp, "turn": turn, "hist": hist.duplicate(true), "enemies": enemies.duplicate(true),
+		"bombs": bombs.duplicate(true), "next_id": next_id, "spawns": spawns.duplicate(true), "kills": kills.duplicate(), "outcome": outcome}
+
+
+## 되감기: snapshot() 으로 떠 둔 상태로 전부 되돌린다. kills 는 main 과 같이 쓰는 사전이라 값만 되돌린다
+func restore(snap: Dictionary) -> void:
+	player = snap["player"]
+	hp = snap["hp"]
+	turn = snap["turn"]
+	hist = snap["hist"].duplicate(true)
+	enemies = snap["enemies"].duplicate(true)
+	bombs = snap["bombs"].duplicate(true)
+	next_id = snap["next_id"]
+	spawns = snap["spawns"].duplicate(true)
+	for k in snap["kills"]:
+		kills[k] = snap["kills"][k]
+	outcome = snap["outcome"]
 
 
 ## sim.py bfs_step 대응: src 에서 플레이어까지 최단 경로의 첫 걸음 방향("" = 길 없음)
@@ -216,6 +256,7 @@ func compute_intents() -> void:
 	for e in enemies:
 		e["intent"] = "none"
 		e["dir"] = Vector2i.ZERO
+		e["target"] = NO_CELL
 		var pos: Vector2i = e["pos"]
 		var dist: int = absi(pos.x - player.x) + absi(pos.y - player.y)
 		var blocked := occ.duplicate()
@@ -231,7 +272,12 @@ func compute_intents() -> void:
 					e["intent"] = "move"
 					e["dir"] = DIRS[m]
 			continue
-		if dist == 1:
+		if e["kind"] == "B" and e["cool"] == 0 and dist <= BOMB_RANGE:
+			# 폭탄병: 지금의 플레이어 칸에 던진다. 대상 칸은 이후 바뀌지 않는다
+			e["intent"] = "bomb"
+			e["target"] = player
+			continue
+		if dist == 1 and e["kind"] != "B":  # 폭탄병은 치지 않는다(아래 이동으로 간다 → 플레이어 칸이라 막힘)
 			for d in DORDER:
 				if pos + DIRS[d] == player:
 					e["intent"] = "hit"
@@ -353,8 +399,36 @@ func step(act: String) -> Array:
 				_hurt("A", events)
 			elif result == "echo":
 				events.append({"type": "block", "pos": ep})
+		elif e["intent"] == "bomb":
+			bombs.append({"pos": e["target"], "fuse": BOMB_FUSE})
+			e["cool"] = BOMB_COOL
+			events.append({"type": "throw", "id": e["id"], "from": e["pos"], "to": e["target"]})
+	# 쿨다운: 이번 턴에 던지지 않은 폭탄병만 준다 (sim.py step 의 cool 줄)
+	for e in enemies:
+		if e["kind"] == "B" and e["cool"] > 0 and e["intent"] != "bomb":
+			e["cool"] -= 1
 
-	# 4. 증원
+	# 4. 폭탄 시계와 폭발 (sim.py step 4번). 메아리는 폭발을 막지 않는다
+	for b in bombs.duplicate():
+		b["fuse"] -= 1
+		if b["fuse"] > 0:
+			continue
+		bombs.erase(b)
+		var cells := blast_cells(b["pos"])
+		events.append({"type": "explode", "pos": b["pos"], "cells": cells})
+		for c in cells:
+			if c == player:
+				_hurt("bomb", events)
+			var bt: Variant = enemy_at(c)
+			if bt != null:
+				bt["hp"] -= 1
+				if bt["hp"] <= 0:
+					_kill(bt, "friendly", events)
+					events[-1]["blast"] = true
+				else:
+					events.append({"type": "blast_hit", "id": bt["id"], "pos": c, "hp": bt["hp"]})
+
+	# 5. 증원
 	if turn >= SQUEEZE_TURN and (turn - SQUEEZE_TURN) % SQUEEZE_EVERY == 0 and not enemies.is_empty():
 		spawns.append([turn + 1, "W", SQUEEZE_CELL])
 	var keep: Array = []
@@ -370,7 +444,7 @@ func step(act: String) -> Array:
 			keep.append(s)
 	spawns = keep
 
-	# 5. 판정
+	# 6. 판정
 	if hp <= 0:
 		outcome = "dead"
 	elif enemies.is_empty() and spawns.is_empty():
@@ -380,6 +454,6 @@ func step(act: String) -> Array:
 	if outcome != "":
 		events.append({"type": outcome})
 
-	# 6. 다음 턴 의도
+	# 7. 다음 턴 의도
 	compute_intents()
 	return events

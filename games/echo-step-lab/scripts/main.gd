@@ -1,7 +1,7 @@
 extends Node2D
 ## 메아리 발자국 — 상태, 입력, 그리기, 연출.
 ## 규칙은 scripts/rules.gd 가 계산하고, 여기서는 그 결과(events)를 화면에 재생한다.
-## 기준: design/FIRST_BUILD.md + design/BUILD_2.md (테스트 인터페이스), design/SCREENS.md (화면).
+## 기준: design/FIRST_BUILD.md + BUILD_2.md + BUILD_3.md (테스트 인터페이스), design/SCREENS.md (화면).
 
 enum State { TITLE, PLAY, RESULT }
 
@@ -15,6 +15,7 @@ const BOARD := Vector2(32, 120)          # 보드 왼쪽 위(7×68 = 476px, y 12
 const SWIPE_MIN := 24.0                  # SCREENS.md: 24px 이상 밀어야 행동
 const BTN_SLASH := Rect2(50, 700, 200, 96)
 const BTN_WAIT := Rect2(290, 700, 200, 96)
+const BTN_REWIND := Rect2(180, 812, 180, 52)   # 베기·대기보다 작게, 그 아래
 
 # 한 턴 연출 시간표(초). 합이 0.9를 넘지 않는다.
 const T_MOVE := 0.12                     # 플레이어 이동/베기
@@ -43,11 +44,11 @@ const C_HURT := Color("ff5d73")
 const C_GOOD := Color("55d6a8")
 const C_SHIELD := Color("ffe9c2")
 
-# ---------------------------------------------------------------- 테스트 인터페이스 (FIRST_BUILD.md, BUILD_2.md 추가분)
+# ---------------------------------------------------------------- 테스트 인터페이스 (FIRST_BUILD.md, BUILD_2.md·BUILD_3.md 추가분)
 
 var state: int = State.TITLE
 var floor_index := 0
-var floor_count := 5
+var floor_count := 10
 var kills := {"stomp": 0, "slash": 0, "friendly": 0, "crush": 0}
 var last_action := ""
 var result_won := false
@@ -79,6 +80,12 @@ var footprints: Array:
 var sword_wait: int:
 	get:
 		return rules.sword_wait() if rules != null and state == State.PLAY else 0
+var bombs: Array:
+	get:
+		return rules.bombs if rules != null else []
+var rewinds_left: int:
+	get:
+		return rewinds if state == State.PLAY else 0
 
 # ---------------------------------------------------------------- 내부 상태
 
@@ -100,6 +107,12 @@ var ripples: Array = []                  # {"pos", "t0"}
 var hurt_t0 := -10.0
 var shake_t0 := -10.0
 var sword_flash_t0 := -10.0
+var rewinds := 0                         # 이 층에서 남은 되감기
+var undo: Dictionary = {}                # 마지막 행동 직전의 {"rules": 규칙 상태, "last_action"}. 비어 있으면 되감을 것이 없다
+var rewind_t0 := -10.0                   # 되감기 번쩍임
+var rewind_shake_t0 := -10.0             # 쓸 수 없을 때 버튼 흔들림
+var blasts: Array = []                   # {"cells", "pos", "t0"} 폭발 연출
+var banner_pre := ""                     # 층 안내 앞에 먼저 보여 줄 글자(체험 구간 끝)
 var glows: Array = []                    # {"pos", "t0"} 층 클리어 때 빛나며 사라지는 발자국
 var banner_t0 := -10.0
 var banner_text := ""
@@ -116,7 +129,11 @@ func _process(delta: float) -> void:
 	if not anim.is_empty():
 		anim["t"] += delta
 		if anim["t"] >= anim["dur"]:
+			# 연출이 제 시간에 끝났을 때도 다음 층 안내를 띄운다(전에는 입력으로 넘길 때만 떴다)
+			var after: bool = anim.get("banner_after", false)
 			anim = {}
+			if after:
+				_show_banner()
 	queue_redraw()
 
 
@@ -163,6 +180,8 @@ func _release(pos: Vector2) -> void:
 						slash_mode = not slash_mode
 				elif BTN_WAIT.has_point(press_pos) and BTN_WAIT.has_point(pos):
 					_do_action("W")
+				elif BTN_REWIND.has_point(press_pos) and BTN_REWIND.has_point(pos):
+					_do_rewind()
 				return
 			if _do_action(act) and Rules.is_slash(act):
 				slash_mode = false
@@ -199,6 +218,7 @@ func _start_run(run_floors: Array, names: Array) -> void:
 	fragments.clear()
 	ripples.clear()
 	glows.clear()
+	blasts.clear()
 	_load_floor(0, Rules.HP_MAX)
 	state = State.PLAY
 	_show_banner()
@@ -208,12 +228,37 @@ func _load_floor(index: int, start_hp: int) -> void:
 	floor_index = index
 	rules = Rules.new()
 	rules.setup(floors[index], start_hp, kills)
+	rewinds = 1                          # 되감기는 층마다 1회
+	undo = {}
+
+
+## 되감기: 마지막으로 확정한 행동 직전으로 전부 되돌린다. 불가능하면 false(버튼이 흔들린다)
+func _do_rewind() -> bool:
+	if state != State.PLAY or rules == null or undo.is_empty() or rewinds < 1:
+		rewind_shake_t0 = clock
+		return false
+	anim = {}                            # 연출 없이 그 상태를 바로 그린다
+	popups.clear()
+	fragments.clear()
+	ripples.clear()
+	blasts.clear()
+	hurt_t0 = -10.0
+	rules.restore(undo["rules"])
+	last_action = undo["last_action"]
+	undo = {}
+	rewinds -= 1
+	slash_mode = false
+	rewind_t0 = clock
+	popups.append({"text": "되감기", "pos": _cell_center(rules.player), "t0": clock, "color": C_ECHO})
+	return true
 
 
 func _show_banner() -> void:
 	banner_t0 = clock
 	var floor_name: String = floor_names[floor_index] if floor_index < floor_names.size() else ""
 	banner_text = "%d층" % (floor_index + 1) + ((" 「%s」" % floor_name) if floor_name != "" else "")
+	# 기본 캠페인에서 5층을 깨고 6층에 들어설 때: 체험 구간 끝 안내를 먼저 보여 준다
+	banner_pre = "체험 구간 끝 — 여기부터 본편" if floors == Content.FLOORS and floor_index == Content.DEMO_FLOORS else ""
 
 
 ## 행동 하나를 확정한다. 규칙 상태는 여기서 즉시 끝까지 갱신되고, 연출은 그 뒤를 따라간다.
@@ -228,9 +273,12 @@ func _do_action(act: String) -> bool:
 		return false
 	_finish_anim()
 	var snap := _snapshot()
+	undo = {"rules": rules.snapshot(), "last_action": last_action}
 	var events: Array = rules.step(act)
 	last_action = act
 	_begin_anim(snap, events)
+	if rules.outcome != "":
+		undo = {}                        # 층을 깼거나 게임이 끝난 행동은 되돌릴 수 없다
 
 	match rules.outcome:
 		"clear":
@@ -255,7 +303,7 @@ func _do_action(act: String) -> bool:
 				for e in events:
 					if e["type"] == "hurt":
 						by = e["by"]
-				defeat_cause = "%d턴, %s" % [rules.turn, {"A": "궁수의 화살", "S": "방패병의 치기"}.get(by, "졸개의 치기")]
+				defeat_cause = "%d턴, %s" % [rules.turn, {"A": "궁수의 화살", "S": "방패병의 치기", "bomb": "폭탄의 폭발"}.get(by, "졸개의 치기")]
 	return true
 
 
@@ -276,6 +324,7 @@ func _snapshot() -> Dictionary:
 		"floor_index": floor_index,
 		"danger": rules.danger_cells(),
 		"spawns": rules.spawns.duplicate(true),
+		"bombs": rules.bombs.duplicate(true),
 	}
 
 
@@ -299,11 +348,17 @@ func _begin_anim(snap: Dictionary, events: Array) -> void:
 				if e["src"] == "crush":
 					at = clock + t_enemy     # 으깨기: 막힌 쪽으로 밀리다 납작해진 뒤에 흩어진다
 					fragments[-1]["t0"] = at
+				if e.get("blast", false):
+					at = clock + t_end       # 폭발에 휘말림
+					fragments[-1]["t0"] = at
 				var label: String = {"friendly": "오사!", "stomp": "밟기!", "slash": "베기!", "crush": "으깨기!"}[e["src"]]
 				popups.append({"text": label, "pos": _cell_center(e["pos"]), "t0": at, "color": C_GOOD})
 			"push":
 				# 처치가 아니어도 명중 글자는 뜬다
 				popups.append({"text": "밟기!" if e["src"] == "stomp" else "베기!", "pos": _cell_center(e["from"]), "t0": clock + t_echo + T_ECHO, "color": C_GOOD})
+			"explode":
+				blasts.append({"cells": e["cells"], "pos": e["pos"], "t0": clock + t_end})
+				popups.append({"text": "쾅!", "pos": _cell_center(e["pos"]), "t0": clock + t_end, "color": C_TEXT})
 			"deflect":
 				popups.append({"text": "튕김", "pos": _cell_center(e["pos"]), "t0": clock + t_echo + T_ECHO, "color": C_SHIELD})
 			"block":
@@ -320,7 +375,7 @@ func _finish_anim() -> void:
 		_show_banner()
 	anim = {}
 	# 아직 시작하지 않은 글자·조각은 지금 바로 보이게 당긴다
-	for list in [popups, fragments, ripples, glows]:
+	for list in [popups, fragments, ripples, glows, blasts]:
 		for p in list:
 			if p["t0"] > clock:
 				p["t0"] = clock
@@ -412,6 +467,21 @@ func _draw_play() -> void:
 			var r := _cell_rect(c)
 			draw_string(font, r.position + Vector2(CELL - 20, 22), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, C_DANGER)
 
+	# 폭탄: 놓인 폭탄과 던질 자리. 범위 5칸에는 남은 턴 숫자(아래에서 맨 위에 그린다)
+	var marks: Dictionary = {}           # 칸 -> 터질 때까지 내 행동 수(작은 쪽)
+	for b in view["bombs"]:
+		_draw_bomb(_cell_center(b["pos"]), 1.0)
+		for c in rules.blast_cells(b["pos"]):
+			draw_rect(_cell_rect(c).grow(-3), Color(C_DANGER, 0.10))
+			marks[c] = mini(marks.get(c, 9), b["fuse"])
+	if view["show_intents"]:
+		for e in view["enemies"]:
+			if e["intent"] == "bomb" and e["alpha"] > 0.5:
+				_draw_dashed_line(e["pos"], _cell_center(e["target"]), Color(C_ENEMY, 0.9))
+				_draw_bomb(_cell_center(e["target"]), 0.55)
+				for c in rules.blast_cells(e["target"]):
+					marks[c] = mini(marks.get(c, 9), Rules.BOMB_FUSE)
+
 	# 증원 예고
 	for s in view["spawns"]:
 		var left: int = maxi(1, int(s[0]) - view["turn"])
@@ -456,6 +526,12 @@ func _draw_play() -> void:
 		var offset: Vector2 = [Vector2(16, 16), Vector2(44, 16), Vector2(16, 44)][mini(n, 2)]
 		_draw_footprint(_cell_rect(f["pos"]).position + offset, f["in"], f["act"], false, sword_flash)
 
+	# 폭발 범위의 숫자(플레이어·발자국 위에 그려 가리지 않게): 칸 오른쪽 아래의 작은 딱지
+	for c in marks:
+		var mp := _cell_rect(c).position + Vector2(CELL - 12, CELL - 12)
+		draw_circle(mp, 10, C_DANGER)
+		draw_string(font, mp + Vector2(-10, 6), str(marks[c]), HORIZONTAL_ALIGNMENT_CENTER, 20, 16, C_BG)
+
 	_draw_preview()
 	_draw_effects()
 
@@ -474,12 +550,26 @@ func _draw_play() -> void:
 		hint = "칼은 메아리가 휘두른 뒤 돌아옵니다"
 	elif slash_mode:
 		hint = "베기를 켜고 밀면 그 방향을 벱니다"
-	_text(hint, 850, 18, C_MUTED)
+	_text(hint, 898, 18, C_MUTED)
+	# 되감기 버튼: 남은 횟수. 쓸 수 없으면(이미 썼거나 되돌릴 턴이 없음) 어둡게
+	var can_rewind := rewinds > 0 and not undo.is_empty() and state == State.PLAY
+	var rs := clock - rewind_shake_t0
+	var rx := sin(rs * 60.0) * 6.0 if rs >= 0.0 and rs < T_SHAKE else 0.0
+	_draw_small_button(Rect2(BTN_REWIND.position + Vector2(rx, 0), BTN_REWIND.size), "되감기 %d" % (rewinds if state == State.PLAY else 0), can_rewind)
+	# 되감은 직후: 보드가 메아리 색으로 옅게 번쩍인다
+	var rt := clock - rewind_t0
+	if rt >= 0.0 and rt < 0.2:
+		draw_rect(Rect2(BOARD, Vector2(CELL, CELL) * Rules.N), Color(C_ECHO, 0.25 * (1.0 - rt / 0.2)))
 
 	# 층 안내
 	var bt := clock - banner_t0
-	if bt >= 0.0 and bt < T_BANNER and not animating:
-		var a := 1.0 - bt / T_BANNER
+	var pre := T_BANNER if banner_pre != "" else 0.0   # 체험 구간 끝 안내가 있으면 그것을 먼저
+	if bt >= 0.0 and bt < pre and not animating:
+		var pa := 1.0 - 0.5 * bt / pre
+		draw_rect(Rect2(0, 318, W, 84), Color(0, 0, 0, 0.7 * pa))
+		_text(banner_pre, 370, 26, Color(C_GOOD, pa))
+	elif bt >= pre and bt < pre + T_BANNER and not animating:
+		var a := 1.0 - (bt - pre) / T_BANNER
 		draw_rect(Rect2(0, 318, W, 84), Color(0, 0, 0, 0.55 * a))
 		_text(banner_text, 374, 34, Color(C_TEXT, a))
 
@@ -489,7 +579,7 @@ func _static_view() -> Dictionary:
 	var es: Array = []
 	for e in rules.enemies:
 		es.append({"kind": e["kind"], "cell": e["pos"], "pos": _cell_center(e["pos"]), "intent": e["intent"], "dir": e["dir"], "alpha": 1.0,
-			"hp": e["hp"], "face": e["face"], "flash": false, "squash": 0.0})
+			"hp": e["hp"], "face": e["face"], "flash": false, "squash": 0.0, "target": e["target"]})
 	return {
 		"floor_index": floor_index, "turn": rules.turn, "hp": rules.hp, "walls": rules.walls.keys(),
 		"enemies": es, "show_intents": true, "danger": rules.danger_cells().keys(), "spawns": rules.spawns,
@@ -498,6 +588,7 @@ func _static_view() -> Dictionary:
 		"player_px": _cell_center(rules.player), "player_cell": rules.player,
 		"blocked_echo": rules.next_echo_pos().x >= 0, "echo_cell": rules.next_echo_pos(),
 		"sword": rules.sword_wait() == 0,
+		"bombs": rules.bombs,
 	}
 
 
@@ -523,7 +614,9 @@ func _anim_view() -> Dictionary:
 		"blocked_echo": false, "echo_cell": Vector2i(-1, -1),
 		# 칼: 이번 턴에 벴으면 손에서 떠났고, 메아리가 벤 턴이 끝나야 돌아온다
 		"sword": post.sword_wait() == 0 and t >= t_end if post.turn == snap["turn"] + 1 else true,
+		"bombs": snap["bombs"],              # 턴 시작 때의 폭탄. 이번 턴에 던진 것은 아래에서 더한다
 	}
+	var blast_killed: Dictionary = {}       # 적 id -> true (폭발에 휘말림, 턴 끝에 사라진다)
 
 	var t_hit := t_echo + T_ECHO      # 메아리의 일격이 닿는 순간
 	var moved: Dictionary = {}        # 적 id -> 도착 칸 (적 행동 단계의 이동)
@@ -554,7 +647,9 @@ func _anim_view() -> Dictionary:
 					var c2 := _cell_center(e["pos"])
 					view["echo_slash"] = [c2, c2.lerp(_cell_center(e["target"]), maxf(k_echo, 0.3))]
 			"kill":
-				if e["src"] == "friendly":
+				if e.get("blast", false):
+					blast_killed[e["id"]] = true
+				elif e["src"] == "friendly":
 					shot_killed[e["id"]] = true
 				else:
 					echo_killed[e["id"]] = t_enemy if e["src"] == "crush" else t_hit
@@ -567,6 +662,12 @@ func _anim_view() -> Dictionary:
 				deflected[e["id"]] = true
 			"arrow_hit":
 				new_hp[e["id"]] = [t_enemy + T_ENEMY * 0.6, e["hp"]]
+			"blast_hit":
+				new_hp[e["id"]] = [t_end, e["hp"]]
+			"throw":
+				# 폭탄이 폭탄병에서 대상 칸으로 날아가 놓인다(적 행동 구간)
+				if t >= t_enemy:
+					view["bombs"] = view["bombs"] + [{"pos": e["to"], "fuse": 1}]
 			"enemy_move":
 				moved[e["id"]] = e["to"]
 			"shot":
@@ -609,15 +710,24 @@ func _anim_view() -> Dictionary:
 			px = px.lerp(_cell_center(moved[id]), k_enemy)
 		if shot_killed.has(id) and t >= t_enemy + T_ENEMY * 0.6:
 			alpha = 0.0
+		if blast_killed.has(id) and t >= t_end:
+			alpha = 0.0
 		view["enemies"].append({"kind": e["kind"], "cell": cell, "pos": px, "intent": e["intent"], "dir": e["dir"], "alpha": alpha,
-			"hp": ehp, "face": e["face"], "flash": deflected.has(id) and t >= t_hit and t < t_hit + 0.2, "squash": squash})
+			"hp": ehp, "face": e["face"], "flash": deflected.has(id) and t >= t_hit and t < t_hit + 0.2, "squash": squash, "target": e["target"]})
+	# 이번 턴에 터진 폭탄은 폭발 시각(t_end)부터 그리지 않는다
+	if t >= t_end:
+		var exploded: Array = []
+		for e in events:
+			if e["type"] == "explode":
+				exploded.append(e["pos"])
+		view["bombs"] = view["bombs"].filter(func(b): return not exploded.has(b["pos"]))
 
 	# 증원은 턴 끝에 등장
 	if t >= t_end:
 		for e in events:
 			if e["type"] == "spawn":
 				view["enemies"].append({"kind": e["kind"], "cell": e["pos"], "pos": _cell_center(e["pos"]), "intent": "none", "dir": Vector2i.ZERO, "alpha": 1.0,
-					"hp": Rules.ENEMY_HP.get(e["kind"], 1), "face": Vector2i(0, 1), "flash": false, "squash": 0.0})
+					"hp": Rules.ENEMY_HP.get(e["kind"], 1), "face": Vector2i(0, 1), "flash": false, "squash": 0.0, "target": Rules.NO_CELL})
 	return view
 
 
@@ -690,6 +800,16 @@ func _draw_effects() -> void:
 		var col: Color = p["color"]
 		col.a = 1.0 - pt / T_POPUP
 		draw_string(font, p["pos"] + Vector2(-60, -30 - 20 * pt / T_POPUP), p["text"], HORIZONTAL_ALIGNMENT_CENTER, 120, 22, col)
+	# 폭발: 범위 칸이 밝게 번쩍이고 고리가 퍼진다
+	for bl in blasts:
+		var blt: float = clock - bl["t0"]
+		if blt < 0.0 or blt > 0.35:
+			continue
+		var bk := blt / 0.35
+		for c in bl["cells"]:
+			draw_rect(_cell_rect(c).grow(-2), Color(C_DANGER, 0.85 * (1.0 - bk)))
+		draw_arc(_cell_center(bl["pos"]), 20.0 + CELL * 1.3 * bk, 0, TAU, 32, Color(C_TEXT, 1.0 - bk), 4.0)
+	blasts = blasts.filter(func(x): return clock - x["t0"] <= 0.35)
 	# 층 클리어: 발자국이 빛나며 사라진다
 	for g in glows:
 		var gt: float = clock - g["t0"]
@@ -738,6 +858,11 @@ func _draw_enemy(pos: Vector2, kind: String, facing: Vector2i, alpha: float, ehp
 	var col := Color(C_ENEMY, alpha)
 	if kind == "W":
 		draw_rect(Rect2(pos - Vector2(20, 20), Vector2(40, 40)), col)
+	elif kind == "B":
+		# 폭탄병: 원 + 위로 뻗은 심지 선, 끝에 작은 점 (플레이어의 흰 원과 색·심지로 구분)
+		draw_circle(pos + Vector2(0, 3), 19, col)
+		draw_line(pos + Vector2(0, -16), pos + Vector2(7, -27), col, 4.0)
+		draw_circle(pos + Vector2(7, -27), 4.5, Color(C_DANGER, alpha))
 	elif kind == "S":
 		# 방패병: 정사각형 + 바라보는 쪽 변의 두꺼운 밝은 막대(방패). 으깨질 때는 막힌 방향으로 납작해진다
 		var half := Vector2(20, 20)
@@ -825,6 +950,45 @@ func _draw_button(rect: Rect2, label: String, active: bool) -> void:
 	draw_string(font, Vector2(rect.position.x, rect.position.y + rect.size.y / 2 + size * 0.36), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, size, C_TEXT)
 
 
+## 놓인 폭탄(또는 던질 자리): 검은 원 + 심지
+func _draw_bomb(pos: Vector2, alpha: float) -> void:
+	draw_circle(pos, 13, Color(C_BG, alpha))
+	draw_arc(pos, 13, 0, TAU, 20, Color(C_DANGER, alpha), 3.0)
+	draw_line(pos + Vector2(6, -11), pos + Vector2(12, -19), Color(C_DANGER, alpha), 3.0)
+
+
+func _draw_dashed_line(from: Vector2, to: Vector2, color: Color) -> void:
+	var n := maxi(2, int(from.distance_to(to) / 14.0))
+	for i in n:
+		if i % 2 == 0:
+			draw_line(from.lerp(to, float(i) / n), from.lerp(to, float(i + 1) / n), color, 3.0)
+
+
+func _draw_small_button(rect: Rect2, label: String, enabled: bool) -> void:
+	draw_rect(rect, C_PANEL if enabled else Color(C_PANEL, 0.5))
+	if enabled:
+		draw_rect(rect, C_GRID, false, 2.0)
+	else:
+		_draw_dashed_rect(rect, C_GRID)
+	draw_string(font, Vector2(rect.position.x, rect.position.y + rect.size.y / 2 + 7), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, 20, C_TEXT if enabled else C_MUTED)
+
+
+func _draw_dashed_rect(rect: Rect2, color: Color) -> void:
+	var step := 16.0
+	var x := rect.position.x
+	while x < rect.end.x:
+		var x2 := minf(x + step * 0.55, rect.end.x)
+		draw_line(Vector2(x, rect.position.y), Vector2(x2, rect.position.y), color, 2.0)
+		draw_line(Vector2(x, rect.end.y), Vector2(x2, rect.end.y), color, 2.0)
+		x += step
+	var y := rect.position.y
+	while y < rect.end.y:
+		var y2 := minf(y + step * 0.55, rect.end.y)
+		draw_line(Vector2(rect.position.x, y), Vector2(rect.position.x, y2), color, 2.0)
+		draw_line(Vector2(rect.end.x, y), Vector2(rect.end.x, y2), color, 2.0)
+		y += step
+
+
 ## 칼이 없을 때의 베기 버튼: 어둡게, 점선 테두리, "칼" + 돌아올 때까지 남은 턴(발자국과 같은 원 숫자)
 func _draw_sword_button(rect: Rect2, wait_turns: int) -> void:
 	draw_rect(rect, Color(C_PANEL, 0.5))
@@ -860,8 +1024,12 @@ func debug_swipe(from: Vector2, to: Vector2) -> void:
 
 
 func debug_press(id: String) -> void:
-	var rect := BTN_SLASH if id == "slash" else BTN_WAIT
+	var rect: Rect2 = {"slash": BTN_SLASH, "rewind": BTN_REWIND}.get(id, BTN_WAIT)
 	debug_tap(rect.get_center())
+
+
+func debug_rewind() -> bool:
+	return _do_rewind()
 
 
 func debug_act(action: String) -> bool:

@@ -1,6 +1,7 @@
 extends SceneTree
 ## 화면 캡처(빌드실·개발실 작성). SCREENS.md 의 화면 3개와 핵심 순간을 찍는다.
-## 01~13: 1차 / 14~22: 2차(칼 하나, 방패병, 밀치기, 으깨기, 튕김, 층 클리어 발자국)
+## 01~13: 1차 / 14~23: 2차(칼 하나, 방패병, 밀치기, 으깨기, 튕김, 층 클리어 발자국)
+## 24~33: 3차(폭탄병, 던지기 의도, 놓인 폭탄, 폭발, 오사, 되감기, 체험 구간 끝, 10층)
 ## 실행: python tools/screenshot.py games/<slug>  →  shots/*.png
 
 const Content := preload("res://scripts/content.gd")
@@ -133,5 +134,51 @@ func _process(_delta: float) -> bool:
 			acts("W W W W W")
 		1390:
 			shot("23-result-lose-shield")         # 패배 원인: 방패병의 치기, 처치 두 줄
+			# ---- 3차 ----
+			game.debug_load_floors([Content.FLOORS[5]])
+		1450:
+			shot("24-floor6-bomber")              # 6층 시작: 폭탄병(원 + 심지), 되감기 1(턴 0이라 어둡게)
+			one_floor([], V(3, 6), [["B", V(3, 3)], ["W", V(0, 0)]])
+		1510:
+			shot("25-bomb-intent")                # 던지기 의도: 점선, 대상 칸의 폭탄, 범위 5칸에 숫자 2
+			acts("L")
+		1570:
+			shot("26-bomb-placed")                # 놓인 폭탄: 범위에 숫자 1, 되감기 버튼 켜짐
+			acts("W")                             # 범위 안((2,6))에 그대로 → 맞는다
+		1606:
+			shot("27-explosion")                  # 폭발: 범위 번쩍, 고리, "쾅!", 피격
+		1640:
+			shot("28-after-explosion")            # 체력 4
+			game.debug_press("rewind")
+		1646:
+			shot("29-rewind")                     # 되감기 직후: 체력 5, 폭탄 다시 1, "되감기", 버튼 "되감기 0"
+			game.debug_press("rewind")
+		1650:
+			shot("30-rewind-used")                # 다시 누름: 쓸 수 없음(버튼 흔들림)
+			one_floor([], V(3, 6), [["B", V(3, 3)], ["W", V(5, 5)], ["W", V(0, 0)]])
+			acts("L")
+		1710:
+			acts("L")                             # 졸개가 폭발 범위로 걸어 들어온다
+		1746:
+			shot("31-blast-friendly")             # 폭발에 휘말린 졸개 "오사!"
+		1780:
+			game.debug_load_floors(Content.FLOORS)
+			for f in ["U SU L R R U U SR W D D", "L L U SU R L D R SR U R W", "U R U D SR L U R R L SU W W D", "U U R D R L U L U SU D U W", "U U SU R D R R D L L SL R L R"]:
+				acts(f)
+		1845:
+			shot("32-demo-end")                   # 5층을 깬 뒤: "체험 구간 끝 — 여기부터 본편"
+		1895:
+			shot("32b-floor6-banner")             # 이어서 "6층 「째깍」"
+			game.debug_load_floors([Content.FLOORS[9]])
+		1960:
+			shot("33-floor10")                    # 10층: 네 종류 전부
+			one_floor([], V(3, 6), [["B", V(3, 3)]])
+			acts("W W W W W W W")
+		2020:
+			shot("34-many-bombs")                 # (참고) 가만히 서서 맞는 중
+			one_floor([V(3, 4)], V(3, 6), [["B", V(6, 6)], ["W", V(3, 5)]])
+			acts("W W W W W")
+		2080:
+			shot("35-result-lose")                # 결과(패배)
 			quit(0)
 	return false

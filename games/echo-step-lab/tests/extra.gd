@@ -15,7 +15,8 @@ var failures: Array[String] = []
 var runs_finished := 0
 var wins := 0
 var shield_runs := 0
-var seen := {"sword_out": 0, "shield_hurt": 0, "crush": 0}
+var main_runs := 0
+var seen := {"sword_out": 0, "shield_hurt": 0, "crush": 0, "bomb": 0, "bomb_intent": 0, "rewind": 0}
 
 
 func _initialize() -> void:
@@ -39,11 +40,27 @@ func random_input() -> void:
 		if runs_finished % 3 == 2:
 			shield_runs += 1
 			game.debug_load_floors([Content.FLOORS[3], Content.FLOORS[4]])
+		elif runs_finished % 3 == 1:
+			# 3차: 본편 층(6~10층) 가운데 둘에서 시작해 폭탄병이 무작위 입력에 걸리게 한다
+			main_runs += 1
+			var a := 5 + (main_runs % 5)
+			game.debug_load_floors([Content.FLOORS[a], Content.FLOORS[5 + ((a - 4) % 5)]])
 		else:
 			game.debug_tap(Vector2(270, 480))
 		return
-	var r := rng.randi_range(0, 9)
-	if r == 0:
+	var r := rng.randi_range(0, 10)
+	if r == 10:
+		# 3차 되감기: 성공하면 정확히 한 턴 전이어야 하고, 실패하면 아무것도 바뀌지 않아야 한다
+		var t0: int = game.turn
+		var left: int = game.rewinds_left
+		var f0: int = game.floor_index
+		game.debug_press("rewind")
+		if game.rewinds_left == left - 1:
+			seen_count("rewind")
+			check(game.turn == t0 - 1 and game.floor_index == f0, "되감기가 한 턴 전이 아님: %d → %d" % [t0, game.turn])
+		else:
+			check(game.turn == t0 and game.rewinds_left == left, "실패한 되감기가 상태를 바꿈")
+	elif r == 0:
 		game.debug_press("wait")
 	elif r <= 2:
 		game.debug_press("slash")
@@ -69,9 +86,21 @@ func invariants() -> void:
 		check(c.x >= 0 and c.x < 7 and c.y >= 0 and c.y < 7, "적이 보드 밖")
 		check(not seen.has(c), "적이 같은 칸에 겹침")
 		check(c != p, "적과 플레이어가 같은 칸")
-		check(e["intent"] in ["move", "hit", "aim", "none"], "의도 값이 유효하지 않음")
+		check(e["intent"] in ["move", "hit", "aim", "bomb", "none"], "의도 값이 유효하지 않음")
 		# 2차: 종류·체력·바라보는 방향
-		check(e["kind"] in ["W", "A", "S"], "적 종류가 유효하지 않음")
+		check(e["kind"] in ["W", "A", "S", "B"], "적 종류가 유효하지 않음")
+		# 3차 폭탄병: 쿨다운 0~3, 던지기 의도면 대상 칸이 보드 안이고 쿨다운 0, 폭탄병은 치지 않는다
+		check(e["cool"] >= 0 and e["cool"] <= 3 and (e["kind"] == "B" or e["cool"] == 0), "쿨다운 범위 밖")
+		if e["intent"] == "bomb":
+			seen_count("bomb_intent")
+			var tg: Vector2i = e["target"]
+			check(e["kind"] == "B" and e["cool"] == 0 and tg.x >= 0 and tg.x < 7 and tg.y >= 0 and tg.y < 7, "던지기 의도가 유효하지 않음")
+			if game.state == game.State.PLAY:
+				check(tg == p, "던지기 대상이 지금의 플레이어 칸이 아님")
+		else:
+			check(e["target"] == Vector2i(-1, -1), "던지기가 아닌데 target 이 있음")
+		if e["kind"] == "B":
+			check(e["intent"] != "hit", "폭탄병이 치려 함")
 		check(e["hp"] >= 1 and e["hp"] <= (2 if e["kind"] == "S" else 1), "적 체력 범위 밖: %s %d" % [e["kind"], e["hp"]])
 		check(e["face"] in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)], "face 가 네 방향이 아님")
 		if e["intent"] == "hit":
@@ -81,6 +110,15 @@ func invariants() -> void:
 		seen[c] = true
 	if game.state == game.State.PLAY:
 		check(game.hp > 0, "PLAY 인데 hp 0")
+	# 3차 폭탄: 턴이 끝난 뒤 남아 있는 폭탄의 남은 턴은 항상 1, 칸은 보드 안. 되감기 횟수는 0~1
+	for b in game.bombs:
+		seen_count("bomb")
+		var bp: Vector2i = b["pos"]
+		check(b["fuse"] == 1, "남은 턴이 1이 아닌 폭탄이 남아 있음: %d" % b["fuse"])
+		check(bp.x >= 0 and bp.x < 7 and bp.y >= 0 and bp.y < 7, "폭탄이 보드 밖")
+	check(game.rewinds_left >= 0 and game.rewinds_left <= 1, "rewinds_left 범위 밖")
+	if game.state == game.State.PLAY and game.turn == 0:
+		check(game.bombs.is_empty(), "턴 0인데 폭탄이 놓여 있음")  # 되감기로 턴 0에 돌아온 경우 rewinds_left 는 0일 수 있다
 	for k in ["stomp", "slash", "friendly", "crush"]:
 		check(game.kills[k] >= 0, "kills 음수")
 	if game.kills["crush"] > 0:
@@ -119,6 +157,9 @@ func _process(_delta: float) -> bool:
 	check(runs_finished >= 5, "무작위 입력으로 끝난 런이 5개 미만: %d" % runs_finished)
 	check(shield_runs >= 2, "방패병 층에서 시작한 런이 2개 미만: %d" % shield_runs)
 	check(seen["sword_out"] > 0, "칼이 없는 상태를 한 번도 지나가지 않음")
+	check(main_runs >= 2 and seen["bomb"] > 0 and seen["bomb_intent"] > 0, "폭탄병·폭탄을 지나가지 않음")
+	check(seen["rewind"] > 0, "되감기가 한 번도 성공하지 않음")
+	print("extra: 본편 층 런 %d개, 던지기 의도 %d번, 놓인 폭탄 %d번, 되감기 성공 %d번" % [main_runs, seen["bomb_intent"], seen["bomb"], seen["rewind"]])
 	print("extra: 방패병 층 런 %d개, 칼 없는 상태 %d번, 다친 방패병 %d번, 으깨기 본 입력 %d번" % [shield_runs, seen["sword_out"], seen["shield_hurt"], seen["crush"]])
 	for f in failures:
 		printerr("SMOKE FAIL extra ", f)
