@@ -165,12 +165,7 @@
     <section class="panel" aria-labelledby="inboxTitle">
       <div class="ptitle"><h2 id="inboxTitle">대표 결재함</h2><span id="inboxHint">대표만 할 수 있는 결정</span></div>
       <div class="tabs" role="tablist" id="tabs"></div>
-      <div class="idea-tools" id="ideaTools" hidden>
-        <input class="search" id="search" type="search" placeholder="아이디어 검색 (제목, 설명, 조작, 장르)">
-        <button class="btn ghost" id="sortBtn" type="button">점수순</button>
-      </div>
       <div class="list" id="inbox"></div>
-      <button class="btn ghost" id="more" type="button" hidden>더 보기</button>
     </section>
 
     <section class="panel" aria-labelledby="shelfTitle">
@@ -178,6 +173,16 @@
       <div class="shelf" id="shelf"></div>
     </section>
   </div>
+
+  <section class="panel" aria-labelledby="ideaTitle">
+    <div class="ptitle"><h2 id="ideaTitle">아이디어 대기</h2><span id="ideaCount"></span></div>
+    <div class="idea-tools">
+      <input class="search" id="search" type="search" placeholder="아이디어 검색 (제목, 설명, 조작, 장르)">
+      <button class="btn ghost" id="sortBtn" type="button">점수순</button>
+    </div>
+    <div class="list" id="ideas"></div>
+    <button class="btn ghost" id="more" type="button" hidden>더 보기</button>
+  </section>
 
   <section class="panel" aria-labelledby="lineTitle">
     <div class="ptitle"><h2 id="lineTitle">생산 라인</h2><span>단계별 현재 대기 수</span></div>

@@ -4,7 +4,7 @@ AI 부서들이 예약 작업으로 게임을 만들고, 대표는 고르고 플
 1회사([Queenrain9/danbi-game-office](https://github.com/Queenrain9/danbi-game-office))와 별개로 처음부터 다시 설계했다.
 
 ```
-아이디어 연구소 → 대표 분류 → 기획실(한 장 기획서) → 빌드실(Godot) → CI 자동 검사·Web export → 검수실 → 대표 플레이테스트
+아이디어 연구소 → 기획실(한 장 기획서, ★ 우선) → 빌드실(Godot) → CI 자동 검사·Web export → 검수실 → 대표 플레이테스트
 ```
 
 - 대시보드: GitHub Pages (`index.html`) — 결재함, 바로 플레이 진열대, 생산 라인, 부서 출근부

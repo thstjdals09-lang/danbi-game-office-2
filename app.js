@@ -12,8 +12,8 @@
     { id: "qa", name: "검수실" }
   ];
   var STATIONS = [
-    { stage: "idea", who: "대표", nm: "분류 대기" },
-    { stage: "planning", who: "기획실", nm: "기획서 작성 대기" },
+    { stage: "idea", who: "기획실", nm: "아이디어 대기" },
+    { stage: "planning", who: "기획실", nm: "기획 중" },
     { stage: "ready", who: "빌드실", nm: "빌드 대기" },
     { stage: "building", who: "빌드실", nm: "빌드 중" },
     { stage: "qa", who: "검수실", nm: "검수 대기" },
@@ -132,6 +132,7 @@
     $("docLink").href = "https://github.com/" + (CFG.repo || "") + "/blob/main/docs/OPERATING_MODEL.md";
     renderDepts();
     renderInbox();
+    renderIdeas();
     renderShelf();
     renderLine();
     renderEvents();
@@ -152,7 +153,6 @@
   function inboxTabs() {
     return [
       { id: "playtest", label: "플레이테스트", items: byStage("playtest").sort(queueOrder) },
-      { id: "idea", label: "아이디어 분류", items: byStage("idea").sort(queueOrder) },
       { id: "held", label: "판단 필요", items: byStage("held").sort(queueOrder) }
     ];
   }
@@ -168,57 +168,69 @@
         esc(t.label) + '<b class="num' + (t.items.length ? "" : " zero") + '">' + t.items.length + "</b></button>";
     }).join("");
 
-    var tab = tabs.find(function (t) { return t.id === ui.tab; });
-    var items = tab.items;
-    var isIdea = ui.tab === "idea";
-    $("ideaTools").hidden = !isIdea;
-    if (isIdea && ui.query) {
+    var items = tabs.find(function (t) { return t.id === ui.tab; }).items;
+    var dis = state.ceo ? "" : " disabled title=\"대표 로그인 필요\"";
+    var empty = { playtest: "플레이할 게임이 아직 없어요. 검수를 통과하면 여기에 와요.", held: "판단할 건이 없어요." };
+    if (!items.length) { $("inbox").innerHTML = '<div class="empty">' + empty[ui.tab] + "</div>"; return; }
+
+    $("inbox").innerHTML = items.map(function (g) {
+      var head = '<span class="bullet" aria-hidden="true"' + (ui.tab === "held" ? ' style="background:var(--red)"' : "") + "></span>";
+      var meta = '<span class="chip verb">' + esc(g.core_verb) + "</span>";
+      if (g.genre) meta += '<span class="chip">' + esc(g.genre) + "</span>";
+      if (g.attempt) meta += '<span class="chip att">빌드 ' + g.attempt + "회차</span>";
+      var b = latestBuild(g.id);
+      if (b) meta += '<span class="chip mono">' + esc(b.commit_sha.slice(0, 7)) + "</span>";
+      var body = '<div class="p">' + esc(g.pitch) + "</div>";
+      if (ui.tab === "held" && g.fix_notes) body += '<div class="note">' + esc(g.fix_notes) + "</div>";
+      var acts = ui.tab === "playtest"
+        ? '<button class="btn" type="button" data-play="' + g.id + '">▶ 플레이</button>' +
+          '<button class="btn go" type="button" data-pt="keep" data-id="' + g.id + '"' + dis + ">합격</button>" +
+          '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis + ">고쳐서 다시</button>" +
+          '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis + ">버리기</button>"
+        : '<button class="btn go" type="button" data-tri="go" data-id="' + g.id + '"' + dis + ">다시 진행</button>" +
+          '<button class="btn bad" type="button" data-tri="drop" data-id="' + g.id + '"' + dis + ">버리기</button>";
+      return '<div class="item' + (ui.tab === "playtest" ? " attn" : "") + '">' + head + '<div><div class="t">' + esc(g.title) +
+        "</div>" + body + '<div class="meta">' + meta + '</div><div class="acts">' + acts + "</div></div></div>";
+    }).join("");
+  }
+
+  // 아이디어 대기: 기획실이 가져갈 순서(★ → 들어온 순)대로 보여 준다. 대표는 ★로 우선순위만 바꾼다.
+  function plannerOrder(a, b) {
+    if (a.starred !== b.starred) return a.starred ? -1 : 1;
+    return new Date(a.created_at) - new Date(b.created_at);
+  }
+
+  function renderIdeas() {
+    var all = byStage("idea").sort(plannerOrder);
+    $("ideaCount").textContent = all.length + "개 · 기획실이 위에서부터 가져가요";
+    var items = all;
+    if (ui.query) {
       var q = ui.query.toLowerCase();
       items = items.filter(function (g) { return (g.title + " " + g.pitch + " " + g.core_verb + " " + (g.genre || "") + " " + g.slug).toLowerCase().indexOf(q) >= 0; });
     }
-    if (isIdea && ui.sort === "score") {
+    if (ui.sort === "score") {
       items = items.slice().sort(function (a, b) {
         if (a.starred !== b.starred) return a.starred ? -1 : 1;
         return (scoreAvg(b) || 0) - (scoreAvg(a) || 0);
       });
     }
     $("sortBtn").textContent = ui.sort === "score" ? "점수순 ✓" : "점수순";
-    var visible = isIdea ? items.slice(0, ui.shown) : items;
-    $("more").hidden = !isIdea || items.length <= ui.shown;
+    var visible = items.slice(0, ui.shown);
+    $("more").hidden = items.length <= ui.shown;
     $("more").textContent = "더 보기 (" + (items.length - ui.shown) + "개 남음)";
+    if (!visible.length) { $("ideas").innerHTML = '<div class="empty">' + (ui.query ? "검색 결과가 없어요." : "대기 중인 아이디어가 없어요.") + "</div>"; return; }
 
     var dis = state.ceo ? "" : " disabled title=\"대표 로그인 필요\"";
-    var empty = { playtest: "플레이할 게임이 아직 없어요. 검수를 통과하면 여기에 와요.", idea: ui.query ? "검색 결과가 없어요." : "분류할 아이디어가 없어요.", held: "판단할 건이 없어요." };
-    if (!visible.length) { $("inbox").innerHTML = '<div class="empty">' + empty[ui.tab] + "</div>"; return; }
-
-    $("inbox").innerHTML = visible.map(function (g) {
-      var head = ui.tab === "idea"
-        ? '<button class="star" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred + '" aria-label="우선 처리"' + dis + ">★</button>"
-        : '<span class="bullet" aria-hidden="true"' + (ui.tab === "held" ? ' style="background:var(--red)"' : "") + "></span>";
+    var next = all[0] && all[0].id;
+    $("ideas").innerHTML = visible.map(function (g) {
       var meta = '<span class="chip verb">' + esc(g.core_verb) + "</span>";
       if (g.genre) meta += '<span class="chip">' + esc(g.genre) + "</span>";
-      if (g.attempt) meta += '<span class="chip att">빌드 ' + g.attempt + "회차</span>";
-      var b = latestBuild(g.id);
-      if (b && ui.tab !== "idea") meta += '<span class="chip mono">' + esc(b.commit_sha.slice(0, 7)) + "</span>";
-      var body = '<div class="p">' + esc(g.pitch) + "</div>";
-      if (ui.tab === "idea") body += '<div class="p" style="color:var(--dim)">' + esc(g.fun_hypothesis) + "</div>" + ideaDetail(g);
-      if (ui.tab === "held" && g.fix_notes) body += '<div class="note">' + esc(g.fix_notes) + "</div>";
-      var acts;
-      if (ui.tab === "playtest") {
-        acts = '<button class="btn" type="button" data-play="' + g.id + '">▶ 플레이</button>' +
-          '<button class="btn go" type="button" data-pt="keep" data-id="' + g.id + '"' + dis + ">합격</button>" +
-          '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis + ">고쳐서 다시</button>" +
-          '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis + ">버리기</button>";
-      } else if (ui.tab === "idea") {
-        acts = '<button class="btn go" type="button" data-tri="go" data-id="' + g.id + '"' + dis + ">만들자</button>" +
-          '<button class="btn ghost" type="button" data-tri="hold" data-id="' + g.id + '"' + dis + ">보류</button>" +
-          '<button class="btn bad" type="button" data-tri="drop" data-id="' + g.id + '"' + dis + ">버리기</button>";
-      } else {
-        acts = '<button class="btn go" type="button" data-tri="go" data-id="' + g.id + '"' + dis + ">다시 진행</button>" +
-          '<button class="btn bad" type="button" data-tri="drop" data-id="' + g.id + '"' + dis + ">버리기</button>";
-      }
-      return '<div class="item' + (ui.tab === "playtest" ? " attn" : "") + '">' + head + '<div><div class="t">' + esc(g.title) +
-        "</div>" + body + '<div class="meta">' + meta + '</div><div class="acts">' + acts + "</div></div></div>";
+      if (g.id === next) meta += '<span class="chip att">다음 기획</span>';
+      return '<div class="item"><button class="star" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred +
+        '" aria-label="우선 처리"' + dis + '>★</button><div><div class="t">' + esc(g.title) + '</div><div class="p">' + esc(g.pitch) +
+        '</div><div class="p" style="color:var(--dim)">' + esc(g.fun_hypothesis) + "</div>" + ideaDetail(g) +
+        '<div class="meta">' + meta + '</div><div class="acts"><button class="btn bad" type="button" data-tri="drop" data-id="' + g.id + '"' + dis +
+        ">버리기</button></div></div></div>";
     }).join("");
   }
 
@@ -324,7 +336,7 @@
       return;
     }
     if (d.tri && g) {
-      var labels = { go: "만들기로 결정", hold: "보류", drop: "버림" };
+      var labels = { go: "다시 진행", hold: "보류", drop: "버림" };
       await act("ceo_triage", { p_game: g.id, p_decision: d.tri, p_note: null }, g.title + " · " + labels[d.tri]);
       return;
     }
@@ -343,9 +355,9 @@
     }
   });
 
-  $("search").addEventListener("input", function (e) { ui.query = e.target.value.trim(); ui.shown = PAGE; renderInbox(); });
-  $("sortBtn").addEventListener("click", function () { ui.sort = ui.sort === "score" ? "queue" : "score"; ui.shown = PAGE; renderInbox(); });
-  $("more").addEventListener("click", function () { ui.shown += PAGE; renderInbox(); });
+  $("search").addEventListener("input", function (e) { ui.query = e.target.value.trim(); ui.shown = PAGE; renderIdeas(); });
+  $("sortBtn").addEventListener("click", function () { ui.sort = ui.sort === "score" ? "queue" : "score"; ui.shown = PAGE; renderIdeas(); });
+  $("more").addEventListener("click", function () { ui.shown += PAGE; renderIdeas(); });
   $("refresh").addEventListener("click", load);
   $("login").addEventListener("click", async function () {
     if (!LIVE) return;
@@ -414,7 +426,7 @@
     var g = state.games.find(function (x) { return x.id === a.p_game; });
     if (!g) return;
     if (fn === "ceo_star") g.starred = a.p_starred;
-    if (fn === "ceo_triage") g.stage = a.p_decision === "go" ? (g.stage === "held" ? "ready" : "planning") : a.p_decision === "hold" ? "held" : "dropped";
+    if (fn === "ceo_triage") { if (a.p_decision === "go" && g.stage === "idea") g.starred = true; else g.stage = a.p_decision === "go" ? "ready" : a.p_decision === "hold" ? "held" : "dropped"; }
     if (fn === "ceo_playtest") g.stage = a.p_verdict === "keep" ? "kept" : a.p_verdict === "fix" ? "ready" : "dropped";
     g.stage_changed_at = new Date().toISOString();
     state.events.unshift({ created_at: g.stage_changed_at, message: g.title + ": " + fn + " (예시)" });

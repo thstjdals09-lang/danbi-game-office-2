@@ -60,17 +60,27 @@ e = await err("select add_idea('bad-why','x','x','x','x',null,null,$1::text[])",
 ok(e && e.includes("WHY_INVALID"), "승격 이유 5개 거절: " + e);
 await q("select ceo_triage($1,'drop')", [g0]);
 
-// 기획 대기 없으면 planner는 빈손
-ok((await q("select * from claim('planner','p1')")).length === 0, "기획할 것 없으면 빈손");
-await q("select ceo_triage($1,'go','짧게')", [g1]);
-ok((await stage(g1)).stage === "planning", "go → planning");
+// 기획실은 대표 승인 없이 아이디어를 가져간다. ★ 먼저, 그다음 오래된 순.
 await q("select ceo_star($1,true)", [g2]);
-await q("select ceo_triage($1,'go')", [g2]);
-
 const c1 = await q("select * from claim('planner','p1')");
-ok(c1.length === 1 && c1[0].id === g2, "별표 우선");
-ok((await q("select * from claim('planner','p2')")).length === 1, "다른 기획자는 다른 건");
-ok((await q("select * from claim('planner','p3')")).length === 0, "임대 중인 건은 안 줌");
+ok(c1.length === 1 && c1[0].id === g2 && c1[0].stage === "planning", "★ 아이디어를 먼저 가져감");
+await q("select ceo_triage($1,'go','짧게')", [g1]);
+let s1 = (await q("select stage, starred from games where id=$1", [g1]))[0];
+ok(s1.stage === "idea" && s1.starred, "만들자 = ★ 우선 표시, 단계는 그대로");
+ok((await q("select * from claim('planner','p2')")).map(r => r.id)[0] === g1, "만들자 한 건이 다음으로");
+await q("select ceo_star($1,false)", [g1]); // 이후 빌드 순서 시나리오는 g2만 ★
+const c3 = await q("select * from claim('planner','p3')");
+ok(c3.length === 1 && c3[0].slug === "idea-0", "그다음은 대표 승인 없이 오래된 아이디어: " + (c3[0] && c3[0].slug));
+await q("select release($1,'p3','테스트')", [c3[0].id]);
+const heldIdea = (await q("select id from games where slug='idea-1'"))[0].id;
+await q("select ceo_triage($1,'hold')", [heldIdea]);
+const dropIdea = (await q("select id from games where slug='idea-2'"))[0].id;
+await q("select ceo_triage($1,'drop')", [dropIdea]);
+const picked = [];
+for (let i = 0; i < 30; i++) { const r = await q("select * from claim('planner','px" + i + "')"); if (!r.length) break; picked.push(r[0].slug); }
+ok(!picked.includes("idea-1") && !picked.includes("idea-2") && !picked.includes("scored-idea"), "보류·버림은 가져가지 않음");
+ok(picked[0] === "idea-0", "중단된 기획(임대 없음)을 먼저 이어받음: " + picked[0]);
+ok((await q("select * from claim('planner','p4')")).length === 0, "임대 중인 건은 안 줌");
 e = await err("select submit_spec($1,'p1',$2)", [g2, JSON.stringify({ ...spec, must_work: spec.must_work.slice(0, 2) })]);
 ok(e && e.includes("must_work는 3~10개"), "must_work 2개 거절: " + e);
 e = await err("select submit_spec($1,'p1',$2)", [g2, JSON.stringify({ ...spec, must_work: [...spec.must_work, { id: "M1", text: "x", check: "y" }] })]);
@@ -159,11 +169,11 @@ ok(e && e.includes("대표만"), "다른 사용자 거절: " + e);
 ok(await err("update games set stage='kept'"), "authenticated 직접 수정 불가") ;
 ok((await stage(g1)).stage === "ready", "직접 수정 안 됨");
 await db.exec(`set request.jwt.claims = '{"email":"Boss@example.com","role":"authenticated"}'`);
-await q("select ceo_triage($1,'hold')", [(await q("select id from games where slug='idea-3'"))[0].id]);
+await q("select ceo_triage($1,'drop')", [(await q("select id from games where slug='idea-1'"))[0].id]);
 ok(true, "대표 메일로 분류 성공");
 await db.exec("reset role; set role service_role");
 await db.exec(`set request.jwt.claims = '{"role":"service_role"}'`);
-ok((await q("select * from claim('planner','svc')")).length === 0, "service_role 워커 함수 가능");
+ok(Array.isArray(await q("select * from claim('planner','svc')")), "service_role 워커 함수 가능");
 
 await db.exec("reset role; reset session authorization");
 console.log(`\n${pass} passed, ${fail} failed`);
