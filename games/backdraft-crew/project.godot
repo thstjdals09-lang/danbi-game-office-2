@@ -1,0 +1,29 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+config/name="불길 속으로"
+config/description="소방관 한 명을 직접 움직여 불타는 건물에서 문과 물로 길을 내고 갇힌 사람을 데리고 나온다"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[display]
+window/size/viewport_width=540
+window/size/viewport_height=960
+window/size/window_width_override=405
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=1
+
+[gui]
+
+theme/custom_font="res://assets/fonts/NotoSansKR-Medium.ttf"
+
+[input_devices]
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.027, 0.067, 0.118, 1)
