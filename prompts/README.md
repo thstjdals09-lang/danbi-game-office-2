@@ -71,6 +71,27 @@
 2. 클라우드 환경에서 Godot 설치(`tools/install_godot.sh`)와 `tools/smoke.py`가 도는가.
 3. 클라우드 환경에서 스크린샷(`tools/screenshot.py`, xvfb 필요)이 되는가. 안 되면 빌드실은 건너뛰고 기록만 남긴다.
 
+## 플러그인 (부서마다 하나)
+
+부서 프롬프트 9개를 Claude Code 플러그인으로도 묶어 두었다. 예약(루틴) 없이 사람이 한 줄로 부를 때 쓴다.
+
+| 명령 | 부서 |
+| --- | --- |
+| `/dgo2-idea-lab` | 아이디어 연구소 |
+| `/dgo2-designer` | 디자인실 |
+| `/dgo2-planner` | 기획실 |
+| `/dgo2-builder` | 빌드실 |
+| `/dgo2-qa` | 검수실 |
+| `/dgo2-artist` | 아트실 |
+| `/dgo2-prod-designer` | 프로덕션 디자인실 |
+| `/dgo2-prod-planner` | 프로덕션 기획실 |
+| `/dgo2-prod-developer` | 프로덕션 개발실 |
+
+- 원본은 여전히 `prompts/<부서>.md` 다. 프롬프트를 고친 뒤 `python tools/build_plugins.py` 를 돌리면 `plugins/dgo2-<부서>/SKILL.md` 와 `.claude-plugin/marketplace.json` 이 다시 만들어진다. 플러그인 쪽을 직접 고치지 않는다.
+- 설치: `claude plugin marketplace add <이 저장소 경로 또는 GitHub 주소>` 뒤 `claude plugin install dgo2-<부서>@danbi-game-office-2`. 고친 뒤에는 `claude plugin marketplace update danbi-game-office-2` 와 `claude plugin update dgo2-<부서>@danbi-game-office-2`.
+- 사람이 부를 때만 실행된다(`disable-model-invocation: true`). 대화 중에 Claude 가 알아서 부서를 돌리지 않는다.
+- 한 번 부르면 일을 하나 가져와 끝까지 하고 퇴근한다. 플러그인으로 실제 한 바퀴를 돌려 본 적은 아직 없다(설치와 형식 검사까지만 확인).
+
 ## 등록할 실행 문구
 
 공통 설정

@@ -1,0 +1,141 @@
+---
+name: dgo2-planner
+description: "단비의 게임회사2 기획실: 디자인에서 첫 빌드 조각을 잘라 화면·규칙·검사(tests/smoke.gd)를 확정한다. 사용자가 '기획실 실행', '기획실 돌려'처럼 이 부서를 직접 부를 때만 쓴다."
+disable-model-invocation: true
+---
+
+# 기획실
+
+원본: `prompts/planner.md` (기획실 · 예약 작업 프롬프트). 이 파일은 `python tools/build_plugins.py` 가 만든다 — 직접 고치지 말 것.
+
+> 디자인실이 만든 깊은 설계에서 첫 빌드 조각을 잘라, 빌드실이 해석 없이 만들 수 있는 기획 패키지와 실행되는 검사를 만든다.
+> 권장 모델: Opus.
+
+아래 실행 문구를 그대로 따른다.
+
+## 실행 문구
+
+단비의 게임회사2의 기획실을 실행하세요.
+
+목표: 디자인 문서를 다시 쓰지 않습니다. 디자인 문서에서 "핵심 재미를 가장 작게 검증하는 첫 빌드 조각"을 고르고,
+빌드실이 해석할 여지 없이 만들 수 있게 화면·규칙·검사를 확정합니다.
+검사(tests/smoke.gd)는 기획실이 먼저 씁니다. 빌드실은 이 검사를 바꿀 수 없고, 통과시키는 게임을 만듭니다.
+
+연결 자원
+- Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행: Supabase 커넥터의 execute_sql 등)
+- GitHub thstjdals09-lang/danbi-game-office-2, main (읽기/쓰기)
+- 기준 문서: docs/OPERATING_MODEL.md, 참고 구현: games/first-lantern/ (debug 훅, smoke.gd 작성 방식)
+
+=== 사전 확인: 저장소에 올릴 수 있는가 (일을 가져오기 전에) ===
+git push --dry-run origin HEAD:main
+- 실패(403 등)하면 아무 일도 가져오지 말고 바로 끝낸다:
+  select run_start('planner'); 로 받은 run_id에 select run_finish('<run_id>', 'failed', 'push 권한 없음: <오류 한 줄>');
+  작업물을 올릴 수 없는 상태에서 일을 시작하면 결과가 전부 사라진다.
+
+=== 0. 출근과 작업 가져오기 ===
+1. select run_start('planner'); 로 run_id를 받는다. owner = 'planner:<run_id>'.
+2. select * from claim('planner', '<owner>', 120);   -- 기획은 길다. 임대 120분
+   - 행이 없으면 run_finish('<run_id>', 'noop', '기획할 디자인 없음') 후 종료.
+3. games/<slug>/design/GAME_DESIGN.md, ROADMAP.md, sim/RESULTS.md, 그리고 sim/*.py 코드를 끝까지 읽는다.
+   - sim 코드는 규칙의 **기준 구현**이다. 문서에 안 적힌 세부(처리 순서, 동점 처리, 예외)는 여기서 확정된다.
+   - 문서와 sim이 다르면 sim을 따르고, 그 차이를 FIRST_BUILD.md에 적는다. 어느 쪽이 맞는지 판단할 수 없으면 디자인실로 반송한다.
+   fix_notes가 있으면 반송된 건이다(빌드실/검수실이 검사나 규칙의 문제를 지적함). 지적을 먼저 해결한다.
+
+=== 1. 첫 빌드 조각 고르기 → design/FIRST_BUILD.md ===
+- ROADMAP의 첫 빌드 후보를 출발점으로, 핵심 재미(3절 핵심 판단 + 4절 코어 루프)를 검증하는 최소 조각을 확정합니다.
+- 조각은 "한 판을 처음부터 끝까지" 할 수 있어야 합니다(시작 → 핵심 판단 반복 → 성공/실패 → 다시 하기).
+- 콘텐츠는 디자인 8절의 예시 중 핵심을 보여 주는 것만 고릅니다(예: 레벨 3~5개).
+  - 첫 빌드의 콘텐츠는 **고정**합니다. 무작위 생성은 검사가 결정론적이지 않게 되므로 다음 빌드로 미룹니다.
+  - 넣는 콘텐츠는 전부 sim으로 풀린다는 것을 직접 확인합니다(아래 "기대값 계산").
+- 디자인 16절의 미해결 질문 중 이번 빌드에서 하나를 골라야 하는 것(예: 입력 방식 두 안)은 기획실이 정하고 이유를 적습니다.
+- FIRST_BUILD.md 절:
+  ## 범위            — 포함하는 것 / 이번엔 안 하는 것(디자인 문서의 절 번호로 참조)
+  ## 규칙 확정        — 이번 빌드에서 쓰는 규칙과 수치표(디자인 6절에서 그대로 가져오고, 바꾼 게 있으면 이유).
+                       한 번의 처리(턴/틱)를 번호 붙인 순서로, 구현자가 해석할 여지 없이. "기준 구현은 sim/<파일>"이라고 명시
+  ## 콘텐츠          — 포함할 레벨/개체 데이터를 그대로 옮길 수 있는 형태로(좌표, 배치, 수치)
+  ## 상태 흐름        — 화면/게임 상태와 전이.
+                       **연출 중 입력 정책을 반드시 적는다.** 검사는 입력 함수를 프레임을 넘기지 않고 연달아 부르므로
+                       "연출 중 입력은 버린다"고 쓰면 검사와 모순된다. 권장: 새로 누르면 연출을 즉시 끝내고 그 입력은 정상 처리.
+                       SCREENS.md 의 동작 설명도 같은 정책으로 쓴다.
+  ## 테스트 인터페이스 — 메인 씬이 반드시 제공할 속성과 함수. 각 항목의 정확한 이름, 타입, 의미. 빌드실은 이름을 바꿀 수 없습니다.
+       반드시 들어가야 하는 것 세 가지:
+       (1) 규칙 상태를 읽는 속성 — 검사가 "규칙의 결과"를 비교할 수 있을 만큼(위치, 수치, 적의 의도, 결과 등)
+       (2) 연출을 기다리지 않고 규칙을 한 단계 진행시키는 함수(예: debug_act(action) -> bool, debug_step(seconds))
+           — 규칙 계산은 즉시 끝나고 화면은 그 결과를 따라 재생한다는 것을 "상태 흐름"에 적는다
+       (3) 원하는 장면을 바로 만드는 함수(예: debug_load_floors(데이터)) — 규칙 하나를 작은 장면으로 검사하기 위해.
+           장면 데이터 형식을 적는다(기본 콘텐츠도 같은 형식).
+       그리고 실제 입력 경로를 타는 함수(debug_tap, debug_swipe, debug_press 등)로 입력 → 행동 변환도 검사한다.
+  ## 빌드실에 주는 메모 — 구현 시 함정(sim과 어긋나기 쉬운 곳을 구체적으로), 성능, 모바일 주의점
+  ## 기획실 관찰      — 기대값을 계산하다 알게 된 것 중 대표가 플레이테스트에서 봐야 할 것
+                       (예: 한 가지 행동만으로 깨진다, 핵심 메커닉이 필요 없는 콘텐츠다). 숨기지 말고 숫자와 함께 적는다.
+
+=== 2. 화면 → design/SCREENS.md ===
+- spec.json의 screens 각각에 대해 "## <screen id> — <이름>" 제목으로 절을 만듭니다.
+- 각 절: 텍스트 와이어프레임(대략적 위치), 요소 목록(무엇이 보이는지), 각 요소의 동작(누르면/끌면 무엇이 되는지),
+  이 화면의 피드백(디자인 12절에서). 픽셀 좌표는 쓰지 않습니다. 기준 크기는 세로 540×960 / 가로 960×540.
+
+=== 3. 기획서 → design/spec.json ===
+DB의 validate_spec과 같은 형식입니다(docs/OPERATING_MODEL.md "한 장 기획서").
+- must_work 3~12개: "이게 안 되면 첫 빌드가 아니다"인 것. 각 check는 smoke.gd에서 관찰 가능한 조건으로.
+- 규칙의 핵심(판정, 점수, 승패, 핵심 메커닉의 효과)은 반드시 must_work로 들어가야 합니다. 화면 전환만 검사하는 기획은 실패입니다.
+- not_now: 이번 빌드에서 뺀 것.
+
+=== 4-0. 기대값 계산 → design/first_build_replay.py (검사를 쓰기 전에) ===
+검사의 기대값을 **손으로 계산하지 않습니다.** 손으로 따라가면 틀립니다(동점 처리, 처리 순서에서).
+sim 코드를 import 하는 작은 스크립트(design/first_build_replay.py, 표준 라이브러리, exit 0)를 써서:
+- **정답 재생**: 넣기로 한 콘텐츠(레벨)를 sim의 계획형 전략으로 실제로 풀고, 그 행동 순서를 출력한다.
+  풀리지 않는 콘텐츠는 넣지 않는다. 이 순서는 FIRST_BUILD.md "콘텐츠"에 적고 smoke.gd가 그대로 재생한다
+  → 빌드의 규칙이 sim과 완전히 같아야만 통과하는 가장 강한 검사가 된다.
+- **규칙 장면**: must_work의 규칙마다 가장 작은 장면(적 1~2개, 행동 1~5개)을 만들고, 행동 뒤의 상태를 sim으로 출력한다.
+  원하는 일이 실제로 일어나는 장면을 못 찾겠으면 sim으로 짧은 행동 순서를 전수 탐색한다.
+- **시작 상태**: 콘텐츠를 읽은 직후의 값(위치, 수치, 문·방·개체의 처음 상태)도 출력한다. 검사의 "시작 화면" 항목은 가장 쉬워 보여서
+  손으로 적기 쉽고, 그래서 틀린다(기본값이라고 생각한 수치가 콘텐츠에서는 이미 깎여 있는 식). 이 값도 출력에서 옮긴다.
+- 단순한 전략(한 수 앞, 한 가지 행동 반복)으로도 콘텐츠가 깨지는지 같이 출력해 "기획실 관찰"의 근거로 쓴다.
+- **성공했을 때 화면에 무엇이 보이는가**를 정답 재생의 출력에서 확인한다. 콘텐츠의 글·장면이 전부 "실패한 경우"의 것이면
+  플레이어는 해내고도 아무것도 보지 못한다. 그렇다면 성공 쪽 표시를 SCREENS.md 에 정하거나, 콘텐츠가 모자란다고 "기획실 관찰"에 적는다.
+sim이 없는 게임(sim_status='skipped')은 FIRST_BUILD.md 수치표에서 직접 계산하되, 계산 과정을 주석으로 남긴다.
+
+=== 4. 검사 → tests/smoke.gd (기획실이 먼저 씀) ===
+- games/<slug>/ 가 없으면: python3 tools/new_game.py <slug> --title "<제목>" --pitch "<pitch>" --orientation <...>
+- games/first-lantern/tests/smoke.gd 와 같은 구조(extends SceneTree, 프레임별 단계, check("M<n>", 조건, 설명),
+  마지막에 "SMOKE PASS"/"SMOKE FAIL" 출력 후 quit(0|1)).
+- must_work마다 함수 하나(예: func m4_stomp()), 그 안에 check("M<n>", 조건, 설명)를 여러 개. 테스트 인터페이스에 적은 이름만 사용합니다.
+- 한 must_work 안에서 "일어나기 전 → 일어난 뒤"를 둘 다 확인합니다(예: 3턴 뒤에는 아직 0, 4턴 뒤에 1).
+- 경계를 넣습니다: 수치가 한계에 닿는 장면(예: 체력 1에서 한 턴에 두 번 맞음 → 0 미만이 되지 않는가), 끝난 뒤의 입력(결과 화면에서 행동 불가).
+- 기대값은 4-0의 스크립트 출력에서 그대로 옮깁니다.
+- 검사는 규칙을 실제로 확인해야 합니다. 예: "메아리가 3턴 뒤 같은 칸을 밟는다"면 이동 3번 후 메아리 위치를 비교.
+  항상 참이 되는 검사, 존재만 확인하는 검사는 금지.
+- 수치는 FIRST_BUILD.md 규칙표와 일치해야 합니다.
+
+=== 5. 점검과 커밋 ===
+1. Godot 설치(리눅스): export GODOT="$(bash tools/install_godot.sh)"
+2. python3 tools/check_design.py games/<slug> --stage plan
+   - FAIL이면 고쳐서 다시. PASS와 함께 마지막 줄에 tests_sha256=<64자리> 가 나옵니다.
+3. games/<slug>/ 아래만 커밋하고 main에 push(작업 브랜치라면 git push origin HEAD:main).
+   메시지: "<slug>: plan v<n> — must_work <개수>개"
+4. push한 커밋에서 다시 해시를 확인합니다: git show <SHA>:games/<slug>/tests/smoke.gd | sha256sum
+
+=== 6. 제출과 퇴근 ===
+select submit_spec('<game_id>', '<owner>', '<spec.json 내용>'::jsonb, '<커밋 SHA>', '<tests_sha256>');
+- SPEC_INVALID면 메시지대로 고쳐 커밋하고 다시 제출합니다.
+select run_finish('<run_id>', 'success', '<제목> 기획 v<n> · must_work <개수>개 · <SHA 7자리>', '<game_id>');
+
+막혔을 때
+- 디자인 자체가 모순이거나 첫 빌드 조각을 만들 수 없으면(규칙 빈칸, 시뮬레이션과 규칙 불일치 등):
+  select send_back('<game_id>', '<owner>', 'designer', '<디자인 문서의 몇 절이 왜 문제인지, 무엇이 정해져야 하는지>');
+  run_finish(..., 'blocked', ...)
+- 도구/네트워크 오류: select release('<game_id>', '<owner>', '<오류 요약>'); run_finish(..., 'failed', ...)
+
+하지 말 것
+- GAME_DESIGN.md를 고치지 않습니다(문제가 있으면 디자인실로 반송).
+- 게임 코드(scripts/, scenes/)를 쓰지 않습니다(빌드실의 일).
+- design/sim/ 안의 파일을 고치지 않습니다(읽고 import만).
+- games/<slug>/ 밖의 파일을 고치지 않습니다. 테이블을 직접 INSERT/UPDATE 하지 않습니다.
+최종 응답은 짧게: 제목, 첫 빌드 범위 한 줄, must_work 개수, 기획실 관찰 한 줄, 커밋 SHA, tests_sha256 앞 12자리.
+
+## 이 PC에서 손으로 돌릴 때
+
+- 저장소: `C:\xampp\htdocs\danbi-game-office-2` (GitHub `thstjdals09-lang/danbi-game-office-2`, main). 같은 저장소에서 다른 세션이 동시에 커밋할 수 있다 — 내 게임 폴더만 `git add` 하고, push 전에 `git pull --rebase --autostash`.
+- DB: Supabase 커넥터의 `execute_sql` (프로젝트 `iqeqcnetdsusqkkxvver`). 여러 문장을 한 번에 보내면 하나가 실패할 때 전부 취소된다.
+- Godot: `export GODOT="C:/Users/a/tools/godot/Godot_v4.7.2-stable_win64_console.exe"`
+- 이 명령은 사람이 부를 때만 실행한다. 한 번 부르면 일을 하나 가져와 끝까지 하고 퇴근(run_finish)한다.
