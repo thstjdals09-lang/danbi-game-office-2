@@ -1,0 +1,116 @@
+<svg viewBox="0 0 960 540" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0c1430"/><stop offset="1" stop-color="#1b2a4d"/></linearGradient>
+  <linearGradient id="cone" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe38a" stop-opacity="0.85"/><stop offset="1" stop-color="#ffe38a" stop-opacity="0.08"/></linearGradient>
+  <linearGradient id="coneDim" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffe38a" stop-opacity="0.6"/><stop offset="1" stop-color="#ffe38a" stop-opacity="0.05"/></linearGradient>
+  <pattern id="hatchB" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#4aa3ff" opacity="0.55"/></pattern>
+  <pattern id="hatchO" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#ff9a3c" opacity="0.55"/></pattern>
+  <!-- 도둑: 키 72px. 색 띠와 실루엣으로 구분 -->
+  <g id="thief">
+    <ellipse cx="0" cy="36" rx="20" ry="5" fill="#000" opacity="0.35"/>
+    <rect x="-14" y="-6" width="28" height="40" rx="12" fill="#1c2233"/>
+    <circle cx="0" cy="-20" r="16" fill="#1c2233"/>
+    <rect x="-16" y="-25" width="32" height="10" rx="5" fill="currentColor"/>
+    <circle cx="-6" cy="-20" r="2.6" fill="#fff"/><circle cx="6" cy="-20" r="2.6" fill="#fff"/>
+    <rect x="8" y="2" width="16" height="20" rx="6" fill="currentColor" opacity="0.9"/>
+  </g>
+  <g id="guard">
+    <ellipse cx="0" cy="36" rx="20" ry="5" fill="#000" opacity="0.35"/>
+    <rect x="-15" y="-6" width="30" height="40" rx="8" fill="#6b7a99"/>
+    <circle cx="0" cy="-20" r="15" fill="#e8c9a8"/>
+    <path d="M-17,-24 h34 v-8 a17,10 0 0 0 -34,0z" fill="#33415f"/><rect x="2" y="-26" width="20" height="5" rx="2" fill="#33415f"/>
+    <rect x="12" y="4" width="16" height="7" rx="3" fill="#d9dee8"/>
+  </g>
+</defs>
+
+<rect width="960" height="540" fill="url(#sky)"/>
+<g fill="#fff" opacity="0.7"><circle cx="60" cy="40" r="1.5"/><circle cx="930" cy="26" r="1.5"/><circle cx="40" cy="150" r="1.2"/><circle cx="925" cy="120" r="1.2"/></g>
+<circle cx="52" cy="92" r="20" fill="#f3e9c2" opacity="0.9"/>
+
+<!-- 건물 단면: 3층 × 방 4칸 + 계단실 -->
+<rect x="104" y="44" width="802" height="372" fill="#0a0f1c"/>
+<!-- 3층: 금고 층. 차단기가 내려가 어둡다 -->
+<rect x="110" y="56" width="720" height="114" fill="#141b2e"/>
+<!-- 2층: 불 켜진 복도 -->
+<rect x="110" y="176" width="720" height="114" fill="#3b4566"/>
+<!-- 1층 -->
+<rect x="110" y="296" width="720" height="114" fill="#353f5e"/>
+<!-- 계단실 -->
+<rect x="836" y="56" width="64" height="354" fill="#232c47"/>
+<g stroke="#56648c" stroke-width="5" stroke-linecap="round">
+  <path d="M846,402 L890,300 M846,282 L890,180 M846,162 L890,62"/>
+</g>
+<!-- 방 칸막이와 문 -->
+<g fill="#0a0f1c"><rect x="287" y="56" width="6" height="74"/><rect x="467" y="56" width="6" height="74"/><rect x="647" y="56" width="6" height="74"/>
+  <rect x="287" y="176" width="6" height="74"/><rect x="467" y="176" width="6" height="74"/><rect x="647" y="176" width="6" height="74"/>
+  <rect x="287" y="296" width="6" height="74"/><rect x="467" y="296" width="6" height="74"/><rect x="647" y="296" width="6" height="74"/></g>
+<!-- 가구 실루엣: 책상, 화분, 상자(숨는 곳) -->
+<g fill="#262f4b"><rect x="150" y="262" width="70" height="28"/><rect x="330" y="382" width="90" height="28"/><rect x="160" y="142" width="60" height="28" opacity="0.6"/></g>
+<g fill="#4a557a"><rect x="604" y="236" width="40" height="54" rx="4"/><rect x="596" y="226" width="56" height="12" rx="4"/></g>
+<!-- 금고 -->
+<g transform="translate(742,118)"><rect x="-44" y="-50" width="88" height="100" rx="8" fill="#55617f"/><rect x="-34" y="-40" width="68" height="80" rx="6" fill="#2a3350"/>
+  <circle r="20" fill="none" stroke="#c9d2e6" stroke-width="5"/><path d="M0,-20 v40 M-20,0 h40" stroke="#c9d2e6" stroke-width="4"/>
+  <circle r="46" fill="none" stroke="#ffd45e" stroke-width="3" stroke-dasharray="6 8" opacity="0.9"/></g>
+<!-- 차단기(1층): 잡고 있는 동안 3층이 어둡다 -->
+<g transform="translate(560,340)"><rect x="-18" y="-34" width="36" height="52" rx="4" fill="#1a2238" stroke="#ff9a3c" stroke-width="3"/>
+  <path d="M0,-6 l14,-22" stroke="#ff9a3c" stroke-width="6" stroke-linecap="round"/><circle cy="-6" r="5" fill="#ff9a3c"/>
+  <path d="M0,-44 C40,-120 60,-200 60,-250" stroke="#ff9a3c" stroke-width="2" stroke-dasharray="3 6" fill="none" opacity="0.7"/></g>
+
+<!-- 계획: 초마다 점 하나. 파랑(금고 담당)의 길 -->
+<g fill="#4aa3ff">
+  <circle cx="150" cy="392" r="4"/><circle cx="186" cy="392" r="4"/><circle cx="222" cy="392" r="4"/><circle cx="258" cy="392" r="4"/><circle cx="300" cy="392" r="4"/>
+  <circle cx="340" cy="392" r="4" opacity="0.5"/>
+  <circle cx="868" cy="250" r="4"/><circle cx="820" cy="272" r="4"/><circle cx="780" cy="272" r="4"/><circle cx="740" cy="272" r="4"/><circle cx="700" cy="272" r="4"/><circle cx="664" cy="272" r="4"/>
+  <circle cx="868" cy="130" r="5" opacity="0.9"/><circle cx="826" cy="152" r="5" opacity="0.9"/><circle cx="790" cy="152" r="5" opacity="0.9"/>
+</g>
+<path d="M664,272 Q760,300 860,230 Q880,180 868,130" stroke="#4aa3ff" stroke-width="2" stroke-dasharray="2 7" fill="none" opacity="0.8"/>
+<!-- 기다림: 고리 하나가 1초. 셋 중 둘이 지났다 -->
+<g transform="translate(626,206)" fill="none" stroke-width="5"><circle r="9" cx="-24" stroke="#4aa3ff" opacity="0.35"/><circle r="9" cx="0" stroke="#4aa3ff" opacity="0.35"/><circle r="9" cx="24" stroke="#4aa3ff"/><circle r="4" cx="24" fill="#4aa3ff" stroke="none"/></g>
+<!-- 주황(차단기 담당)의 길 -->
+<g fill="#ff9a3c"><circle cx="150" cy="402" r="4"/><circle cx="196" cy="402" r="4"/><circle cx="242" cy="402" r="4"/><circle cx="300" cy="402" r="4"/><circle cx="350" cy="402" r="4"/><circle cx="400" cy="402" r="4"/><circle cx="450" cy="402" r="4"/><circle cx="500" cy="402" r="4"/></g>
+
+<!-- 2층 경비: 손전등 빛이 바닥을 쓸고 간다. 빛 끝이 상자에 막 닿았다 -->
+<path d="M452,236 L596,196 L596,290 L452,262Z" fill="url(#cone)"/>
+<use href="#guard" transform="translate(430,250)"/>
+<!-- 경비의 순찰: 걸음마다 점 -->
+<g fill="#e8c9a8" opacity="0.55"><circle cx="180" cy="284" r="3"/><circle cx="220" cy="284" r="3"/><circle cx="260" cy="284" r="3"/><circle cx="300" cy="284" r="3"/><circle cx="340" cy="284" r="3"/><circle cx="380" cy="284" r="3"/></g>
+
+<!-- 숨은 파랑: 상자 뒤. 아슬아슬 -->
+<g color="#4aa3ff"><use href="#thief" transform="translate(676,252) scale(0.92)"/></g>
+<g stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.9"><path d="M652,206 l-8,-10 M664,198 l-2,-13 M678,198 l5,-12"/></g>
+
+<!-- 3층 경비: 어둠 속이라 빛이 짧다 -->
+<path d="M306,116 L250,100 L250,160 L306,142Z" fill="url(#coneDim)"/>
+<use href="#guard" transform="translate(328,130) scale(-1,1)" opacity="0.8"/>
+
+<!-- 주황: 차단기를 잡고 있다 -->
+<g color="#ff9a3c"><use href="#thief" transform="translate(524,372)"/></g>
+
+<!-- 건물 뼈대선 -->
+<g stroke="#8fa2cf" stroke-width="3" fill="none"><rect x="104" y="50" width="802" height="366"/><path d="M104,173 H836 M104,293 H836 M836,50 V416"/></g>
+<rect x="0" y="416" width="960" height="8" fill="#060a14"/>
+<!-- 승합차(들어오고 나가는 곳) -->
+<g transform="translate(52,386)"><rect x="-40" y="-26" width="80" height="44" rx="8" fill="#c8402e"/><rect x="-30" y="-18" width="26" height="16" rx="3" fill="#0c1430"/><circle cx="-20" cy="20" r="9" fill="#0a0f1c"/><circle cx="22" cy="20" r="9" fill="#0a0f1c"/></g>
+
+<!-- 위: 경보 등 셋(꺼짐), 챙길 것 -->
+<g transform="translate(866,24)"><circle r="9" fill="#2a3350" stroke="#56648c" stroke-width="2"/><circle cx="26" r="9" fill="#2a3350" stroke="#56648c" stroke-width="2"/><circle cx="52" r="9" fill="#2a3350" stroke="#56648c" stroke-width="2"/></g>
+<g transform="translate(130,24)"><path d="M-10,-4 h20 l6,16 a10,6 0 0 1 -32,0z" fill="#ffd45e"/><path d="M-6,-4 q6,-10 12,0" stroke="#ffd45e" stroke-width="3" fill="none"/></g>
+
+<!-- 아래: 단원(누르면 그 사람의 길을 그린다), 시간 자, 작전 개시 -->
+<rect y="424" width="960" height="116" fill="#070b16"/>
+<g transform="translate(58,482)"><circle r="40" fill="#101830" stroke="#4aa3ff" stroke-width="5"/><g color="#4aa3ff"><use href="#thief" transform="translate(0,6) scale(0.72)"/></g></g>
+<g transform="translate(146,490)"><circle r="30" fill="#101830" stroke="#ff9a3c" stroke-width="3" opacity="0.9"/><g color="#ff9a3c"><use href="#thief" transform="translate(0,5) scale(0.54)"/></g></g>
+<!-- 시간 자: 눈금 하나가 1초. 왼쪽 끝이 지금 막 시작, 오른쪽 끝이 순찰 교대(해) -->
+<g transform="translate(210,452)">
+  <rect width="590" height="18" rx="9" fill="#4aa3ff" opacity="0.25"/>
+  <rect width="96" height="18" rx="9" fill="#4aa3ff"/><rect x="100" y="0" width="44" height="18" fill="url(#hatchB)"/><rect x="100" y="0" width="44" height="18" fill="none" stroke="#4aa3ff" stroke-width="2"/>
+  <rect x="148" width="150" height="18" rx="9" fill="#4aa3ff" opacity="0.6"/>
+  <g transform="translate(0,28)"><rect width="590" height="18" rx="9" fill="#ff9a3c" opacity="0.25"/><rect width="124" height="18" rx="9" fill="#ff9a3c"/>
+    <rect x="128" width="120" height="18" fill="url(#hatchO)"/><rect x="128" width="120" height="18" fill="none" stroke="#ff9a3c" stroke-width="2"/></g>
+  <g stroke="#56648c" stroke-width="2"><path d="M0,58 H590"/>
+    <path d="M0,54 v8 M59,54 v8 M118,54 v8 M177,54 v8 M236,54 v8 M295,54 v8 M354,54 v8 M413,54 v8 M472,54 v8 M531,54 v8 M590,54 v8"/></g>
+  <path d="M132,-10 V66" stroke="#fff" stroke-width="3"/><path d="M124,-12 h16 l-8,10z" fill="#fff"/>
+  <circle cx="606" cy="26" r="12" fill="#ffd45e"/><g stroke="#ffd45e" stroke-width="3" stroke-linecap="round"><path d="M606,6 v-6 M606,46 v6 M626,26 h6 M589,10 l-4,-4 M623,10 l4,-4"/></g>
+</g>
+<g transform="translate(892,482)"><circle r="44" fill="#1f8f5f" stroke="#7df0b6" stroke-width="4"/><rect x="-14" y="-18" width="10" height="36" rx="3" fill="#fff"/><rect x="4" y="-18" width="10" height="36" rx="3" fill="#fff"/></g>
+</svg>
