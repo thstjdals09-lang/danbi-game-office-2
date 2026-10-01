@@ -1,0 +1,594 @@
+{
+ "ticks": 90,
+ "tick_seconds": 2.0,
+ "fast_seconds": 0.5,
+ "start": "inn",
+ "max_items": 2,
+ "max_queue": 3,
+ "places": [
+  {
+   "id": "inn",
+   "name": "여관"
+  },
+  {
+   "id": "bakery",
+   "name": "빵집"
+  },
+  {
+   "id": "plaza",
+   "name": "광장"
+  },
+  {
+   "id": "post",
+   "name": "우체국"
+  },
+  {
+   "id": "smithy",
+   "name": "대장간"
+  },
+  {
+   "id": "tower",
+   "name": "종탑"
+  },
+  {
+   "id": "dock",
+   "name": "나루터"
+  }
+ ],
+ "edges": [
+  [
+   "inn",
+   "bakery",
+   1
+  ],
+  [
+   "inn",
+   "plaza",
+   2
+  ],
+  [
+   "bakery",
+   "plaza",
+   2
+  ],
+  [
+   "plaza",
+   "post",
+   2
+  ],
+  [
+   "plaza",
+   "smithy",
+   3
+  ],
+  [
+   "plaza",
+   "tower",
+   3
+  ],
+  [
+   "post",
+   "tower",
+   2
+  ],
+  [
+   "smithy",
+   "dock",
+   2
+  ],
+  [
+   "plaza",
+   "dock",
+   4
+  ]
+ ],
+ "npcs": [
+  {
+   "id": "bori",
+   "name": "보리"
+  },
+  {
+   "id": "darae",
+   "name": "다래"
+  },
+  {
+   "id": "musoe",
+   "name": "무쇠"
+  },
+  {
+   "id": "sori",
+   "name": "소리"
+  }
+ ],
+ "itinerary": [
+  {
+   "npc": "bori",
+   "t0": 0,
+   "t1": 14,
+   "loc": "bakery",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "bori",
+   "t0": 15,
+   "t1": 26,
+   "loc": "bakery",
+   "need": [
+    "wood"
+   ],
+   "forbid": []
+  },
+  {
+   "npc": "bori",
+   "t0": 28,
+   "t1": 30,
+   "loc": "inn",
+   "need": [
+    "wood",
+    "order"
+   ],
+   "forbid": []
+  },
+  {
+   "npc": "bori",
+   "t0": 31,
+   "t1": 89,
+   "loc": "bakery",
+   "need": [
+    "wood",
+    "order"
+   ],
+   "forbid": []
+  },
+  {
+   "npc": "bori",
+   "t0": 27,
+   "t1": 89,
+   "loc": "bakery",
+   "need": [
+    "wood"
+   ],
+   "forbid": [
+    "order"
+   ]
+  },
+  {
+   "npc": "bori",
+   "t0": 20,
+   "t1": 24,
+   "loc": "smithy",
+   "need": [],
+   "forbid": [
+    "wood"
+   ]
+  },
+  {
+   "npc": "bori",
+   "t0": 29,
+   "t1": 89,
+   "loc": "bakery",
+   "need": [],
+   "forbid": [
+    "wood"
+   ]
+  },
+  {
+   "npc": "darae",
+   "t0": 0,
+   "t1": 6,
+   "loc": "inn",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "darae",
+   "t0": 7,
+   "t1": 8,
+   "loc": "bakery",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "darae",
+   "t0": 9,
+   "t1": 89,
+   "loc": "inn",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "musoe",
+   "t0": 0,
+   "t1": 27,
+   "loc": "smithy",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "musoe",
+   "t0": 30,
+   "t1": 60,
+   "loc": "dock",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "musoe",
+   "t0": 62,
+   "t1": 68,
+   "loc": "smithy",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "musoe",
+   "t0": 70,
+   "t1": 89,
+   "loc": "dock",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "sori",
+   "t0": 0,
+   "t1": 18,
+   "loc": "post",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "sori",
+   "t0": 22,
+   "t1": 23,
+   "loc": "bakery",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "sori",
+   "t0": 24,
+   "t1": 25,
+   "loc": "inn",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "sori",
+   "t0": 30,
+   "t1": 31,
+   "loc": "smithy",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "sori",
+   "t0": 37,
+   "t1": 38,
+   "loc": "tower",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "npc": "sori",
+   "t0": 40,
+   "t1": 89,
+   "loc": "post",
+   "need": [],
+   "forbid": []
+  }
+ ],
+ "events": [
+  {
+   "t": 8,
+   "set": [
+    "slip_on_counter"
+   ],
+   "need": [],
+   "forbid": []
+  },
+  {
+   "t": 9,
+   "set": [
+    "slip_fallen"
+   ],
+   "need": [],
+   "forbid": []
+  },
+  {
+   "t": 24,
+   "set": [
+    "burnt"
+   ],
+   "need": [],
+   "forbid": [
+    "wood"
+   ]
+  },
+  {
+   "t": 24,
+   "set": [
+    "bread"
+   ],
+   "need": [
+    "wood"
+   ],
+   "forbid": []
+  },
+  {
+   "t": 28,
+   "set": [
+    "inn_bread"
+   ],
+   "need": [
+    "bread",
+    "order"
+   ],
+   "forbid": []
+  },
+  {
+   "t": 50,
+   "set": [
+    "lunch"
+   ],
+   "need": [
+    "inn_bread"
+   ],
+   "forbid": []
+  }
+ ],
+ "scenes": [
+  {
+   "note": "N_slip",
+   "who": "darae",
+   "loc": [
+    "bakery"
+   ],
+   "t0": 8,
+   "t1": 8,
+   "text": "다래가 빵 주문 쪽지를 계산대에 두고 간다",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "note": "N_slipfall",
+   "who": "bori",
+   "loc": [
+    "bakery"
+   ],
+   "t0": 9,
+   "t1": 9,
+   "text": "문바람에 쪽지가 계산대 밑으로 날아간다",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "note": "N_dough",
+   "who": "bori",
+   "loc": [
+    "bakery"
+   ],
+   "t0": 10,
+   "t1": 10,
+   "text": "보리가 반죽을 화덕에 넣는다(14틱 굽는다)",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "note": "N_nowood",
+   "who": "bori",
+   "loc": [
+    "bakery"
+   ],
+   "t0": 12,
+   "t1": 14,
+   "text": "보리: 장작이 다 떨어졌네, 무쇠네서 얻어 와야지",
+   "need": [],
+   "forbid": [
+    "wood"
+   ]
+  },
+  {
+   "note": "N_burnt",
+   "who": "bori",
+   "loc": [
+    "bakery"
+   ],
+   "t0": 24,
+   "t1": 29,
+   "text": "빈 빵집에서 빵이 탄다",
+   "need": [
+    "burnt"
+   ],
+   "forbid": []
+  },
+  {
+   "note": "N_nolunch",
+   "who": "darae",
+   "loc": [
+    "inn"
+   ],
+   "t0": 50,
+   "t1": 55,
+   "text": "다래: 빵이 안 왔네, 오늘 점심 장사는 접자",
+   "need": [],
+   "forbid": [
+    "inn_bread"
+   ]
+  },
+  {
+   "note": "C_run",
+   "who": "bori",
+   "loc": [
+    "plaza"
+   ],
+   "t0": 16,
+   "t1": 18,
+   "text": "보리가 앞치마 바람으로 대장간 쪽으로 뛰어간다",
+   "need": [],
+   "forbid": [
+    "wood"
+   ]
+  },
+  {
+   "note": "C_sori",
+   "who": "sori",
+   "loc": [
+    "plaza"
+   ],
+   "t0": 19,
+   "t1": 21,
+   "text": "소리가 우편 가방을 메고 빵집 쪽으로 간다",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "note": "C_smoke",
+   "who": "bori",
+   "loc": [
+    "plaza",
+    "inn",
+    "post"
+   ],
+   "t0": 24,
+   "t1": 29,
+   "text": "빵집 굴뚝에서 검은 연기가 오른다",
+   "need": [
+    "burnt"
+   ],
+   "forbid": []
+  },
+  {
+   "note": "C_fish",
+   "who": "musoe",
+   "loc": [
+    "smithy"
+   ],
+   "t0": 27,
+   "t1": 28,
+   "text": "무쇠가 낚싯대를 챙겨 나루터로 나선다",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "note": "C_sori2",
+   "who": "sori",
+   "loc": [
+    "plaza"
+   ],
+   "t0": 33,
+   "t1": 35,
+   "text": "소리가 종탑 쪽으로 걸어간다",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "note": "C_fishing",
+   "who": "musoe",
+   "loc": [
+    "dock"
+   ],
+   "t0": 55,
+   "t1": 60,
+   "text": "무쇠가 말없이 낚시한다. 한 마리도 못 잡았다",
+   "need": [],
+   "forbid": []
+  },
+  {
+   "note": "C_evening",
+   "who": "darae",
+   "loc": [
+    "inn"
+   ],
+   "t0": 76,
+   "t1": 82,
+   "text": "다래: 아침에 주문 쪽지 두고 왔는데 못 봤어? 보리: 쪽지요?",
+   "need": [],
+   "forbid": [
+    "inn_bread"
+   ]
+  }
+ ],
+ "actions": [
+  {
+   "id": "wood_take",
+   "label": "장작을 든다",
+   "loc": "smithy",
+   "t0": 0,
+   "t1": 89,
+   "know": [],
+   "items": [],
+   "npc": "",
+   "dur": 1,
+   "take": [],
+   "give": [
+    "wood"
+   ],
+   "set": [
+    "took"
+   ],
+   "text": "대장간 뒷마당에서 장작을 든다",
+   "need": [],
+   "forbid": [
+    "took"
+   ]
+  },
+  {
+   "id": "wood_give",
+   "label": "장작을 준다",
+   "loc": "bakery",
+   "t0": 0,
+   "t1": 14,
+   "know": [],
+   "items": [
+    "wood"
+   ],
+   "npc": "bori",
+   "dur": 1,
+   "take": [
+    "wood"
+   ],
+   "give": [],
+   "set": [
+    "wood"
+   ],
+   "text": "보리에게 장작을 준다 → 보리가 빵집을 비우지 않는다",
+   "need": [],
+   "forbid": [
+    "wood"
+   ]
+  },
+  {
+   "id": "slip",
+   "label": "쪽지를 주워 준다",
+   "loc": "bakery",
+   "t0": 9,
+   "t1": 89,
+   "know": [
+    "N_slipfall"
+   ],
+   "items": [],
+   "npc": "bori",
+   "dur": 1,
+   "take": [],
+   "give": [],
+   "set": [
+    "order"
+   ],
+   "text": "계산대 밑의 쪽지를 주워 보리에게 준다",
+   "need": [
+    "slip_fallen"
+   ],
+   "forbid": [
+    "order"
+   ]
+  }
+ ],
+ "goal": [
+  "lunch"
+ ],
+ "goal_name": "식은 화덕 — 여관의 점심",
+ "item_names": {
+  "wood": "장작"
+ }
+}
