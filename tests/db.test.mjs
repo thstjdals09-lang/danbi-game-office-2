@@ -152,6 +152,26 @@ ok(await err("select ceo_playtest($1,'fix','')", [g2]), "수정 요청엔 메모
 await q("select ceo_playtest($1,'keep','좋다')", [g2]);
 ok((await stage(g2)).stage === "kept", "keep → kept");
 
+// 아트실: 플레이 대기·합격작 중 아트가 없는 게임을 가져가 방향 3안을 제출한다
+const art = { key_screen: "shots/02-play.png", key_reason: "핵심 판단이 한 화면에 보인다",
+  directions: ["A", "B", "C"].map(id => ({ id, name: "방향 " + id, description: "설명 " + id, image: `art/${id}.png` })) };
+const a1 = await q("select * from claim_art('art1')");
+ok(a1.length === 1 && a1[0].id === g2, "아트실은 합격작/플레이 대기 게임을 가져감");
+ok((await q("select * from claim_art('art2')")).length === 0, "아트 임대 중인 건은 안 줌");
+e = await err("select submit_art($1,'art1',$2,'abc1234')", [g2, JSON.stringify({ ...art, directions: art.directions.slice(0, 2) })]);
+ok(e && e.includes("정확히 3개"), "아트 방향 2개 거절: " + e);
+e = await err("select submit_art($1,'art1',$2,'abc1234')", [g2, JSON.stringify({ ...art, directions: art.directions.map(d => ({ ...d, image: "https://x/y.png" })) })]);
+ok(e && e.includes("ART_INVALID"), "art/ 밖 이미지 경로 거절: " + e);
+ok(await err("select submit_art($1,'art9',$2,'abc1234')", [g2, JSON.stringify(art)]), "남의 임대로 아트 제출 거절");
+await q("select submit_art($1,'art1',$2,'abc1234')", [g2, JSON.stringify(art)]);
+let ag = (await q("select stage, art, art_commit, art_lease_owner from games where id=$1", [g2]))[0];
+ok(ag.stage === "kept" && ag.art.directions.length === 3 && ag.art_commit === "abc1234" && ag.art_lease_owner === null, "아트 제출: 단계는 그대로, 아트 저장");
+ok((await q("select * from claim_art('art3')")).length === 0, "아트가 있는 게임은 다시 안 줌");
+await q("select ceo_pick_art($1,'B')", [g2]);
+ok((await q("select art_pick from games where id=$1", [g2]))[0].art_pick === "B", "대표가 아트 방향 선택");
+ok(await err("select ceo_pick_art($1,'D')", [g2]), "없는 방향 선택 거절");
+ok(await err("select ceo_pick_art($1,'A')", [g1]), "아트가 없는 게임은 선택 불가");
+
 // 임대 만료된 빌드 이어받기 + 운영 장애 release
 await q("select * from claim('builder','b1',0)");
 ok((await stage(g1)).stage === "building", "g1 빌드 시작");
@@ -205,6 +225,8 @@ ok((await q("select count(*)::int c from games"))[0].c > 0, "anon 읽기 가능"
 ok(await err("insert into games(slug,title,pitch,core_verb,fun_hypothesis) values ('x','x','x','x','x')"), "anon 직접 쓰기 불가");
 ok(await err("select * from claim('builder','hack')"), "anon 워커 함수 불가");
 ok(await err("select ceo_triage($1,'drop')", [g1]), "anon 대표 함수 불가");
+ok(await err("select * from claim_art('hack')"), "anon 아트 함수 불가");
+ok(await err("select ceo_pick_art($1,'A')", [g2]), "anon 아트 선택 불가");
 ok((await q("select count(*)::int c from ceo_emails").catch(() => [{ c: 0 }]))[0].c === 0, "anon은 대표 메일 못 봄");
 await db.exec("reset role; set role authenticated");
 await db.exec(`set request.jwt.claims = '{"email":"someone@example.com","role":"authenticated"}'`);

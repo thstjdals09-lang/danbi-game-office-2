@@ -134,6 +134,40 @@
   .tools { display: flex; gap: 8px; }
   .search { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; color: var(--text); font: inherit; font-size: 13px; }
 
+  /* 게임 라이브러리 */
+  .lib { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .gcard { text-align: left; padding: 0; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; cursor: pointer; display: grid; grid-template-rows: auto 1fr; }
+  .gcard:hover { border-color: var(--line); }
+  .gcard .thumb { aspect-ratio: 4 / 3; background: radial-gradient(circle at 50% 40%, rgba(116,167,255,.22), transparent 60%), #0b1627; display: grid; place-items: center; overflow: hidden; }
+  .gcard .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 38%; display: block; }
+  .gcard .thumb .ph { font-size: 13px; color: var(--dim); padding: 12px; text-align: center; }
+  .gcard .body { padding: 12px 14px 14px; display: grid; gap: 6px; align-content: start; }
+  .gcard .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .gcard .playable { font-size: 11px; color: var(--green); white-space: nowrap; }
+  .gcard .t { font-size: 15px; font-weight: 700; }
+  .gcard .d { font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .gcard .open { font-size: 12px; color: var(--accent); }
+
+  /* 게임 상세 */
+  .back { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px 0; font-size: 13px; justify-self: start; }
+  .back:hover { color: var(--text); }
+  .ghead { display: grid; gap: 8px; }
+  .ghead h2 { margin: 0; font-size: 22px; font-weight: 800; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .playbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 14px 16px; }
+  .playbar .btn.go { font-size: 15px; padding: 10px 18px; }
+  .arts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 640px) { .arts { grid-template-columns: repeat(3, minmax(200px, 1fr)); overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; } .art { scroll-snap-align: start; } }
+  .art { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+  .art.picked { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+  .art button.pic { padding: 0; border: 0; background: #06101c; cursor: zoom-in; display: block; }
+  .art img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; display: block; }
+  .art .cap { padding: 10px 12px 12px; display: grid; gap: 6px; align-content: start; }
+  .art .nm { font-size: 14px; font-weight: 700; }
+  .art .nm b { color: var(--accent); margin-right: 6px; }
+  .art .ds { font-size: 12px; color: var(--muted); }
+  .keyshot { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: start; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 12px; }
+  .keyshot img { width: 96px; border-radius: 8px; border: 1px solid var(--line); display: block; cursor: zoom-in; }
+
   /* 공장 */
   .depts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
   .dept { background: var(--panel); border: 1px solid var(--line-soft); border-radius: 12px; padding: 12px 14px; display: grid; gap: 3px; min-width: 0; align-content: start; }
@@ -241,10 +275,14 @@
     </div>
   </section>
 
-  <!-- 게임: 게임별로 접힌 줄 -->
+  <!-- 게임: 라이브러리(카드) → 게임 상세 -->
   <section class="view" id="view-games" hidden>
-    <div class="filters" id="gameFilters"></div>
-    <div class="list" id="games"></div>
+    <div id="gameLib" class="sec">
+      <div class="sec-head"><h2>게임 라이브러리</h2><span>게임을 눌러 플레이하고, 아트 방향을 살펴보세요</span></div>
+      <div class="filters" id="gameFilters"></div>
+      <div class="lib" id="games"></div>
+    </div>
+    <div id="gameDetail" class="view" hidden></div>
   </section>
 
   <!-- 아이디어 -->
@@ -314,6 +352,16 @@
     </div>
     <div class="doc-tabs" id="docTabs"></div>
     <div class="doc-body" id="docBody"></div>
+  </div>
+</dialog>
+
+<dialog id="imgDlg">
+  <div class="player">
+    <div class="player-head">
+      <strong id="imgTitle"></strong>
+      <form method="dialog"><button class="btn ghost small" type="submit">닫기</button></form>
+    </div>
+    <img id="imgBig" alt="" style="display:block;max-width:min(560px, calc(100vw - 56px));max-height:calc(100vh - 130px);border-radius:12px">
   </div>
 </dialog>
 

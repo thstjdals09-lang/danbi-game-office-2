@@ -24,7 +24,8 @@
 | 기획실 | `designed` | `design/FIRST_BUILD.md`, `design/SCREENS.md`, `design/spec.json`, `tests/smoke.gd` | `prompts/planner.md` |
 | 빌드실 | `ready` | 게임 코드(`scripts/rules.gd` 규칙 · `main.gd` 화면), `BUILD.md`(SCREENS 대조표), `shots/*.png`, `tests/extra.gd` | `prompts/builder.md` |
 | 검수실 | `qa` | 판정(CI·검사 파일 무결성·수치·대조표의 정직함·스크린샷) | `prompts/qa.md` |
-| 대표 | `playtest`, `held` | 플레이 판정, 판단 | 대시보드 |
+| 아트실 | `playtest`·`kept` 중 아트가 없는 게임 (흐름을 막지 않는 옆 작업) | `art/A·B·C` 아트 방향 3안, `art/key.png`, `art/ART.md` | `prompts/artist.md` |
+| 대표 | `playtest`, `held` | 플레이 판정, 판단, 아트 방향 선택 | 대시보드 |
 
 ## 흐름
 
@@ -68,6 +69,13 @@ idea ─디자인실─▶ designing ─▶ designed ─기획실─▶ planning
 6. 자기 단계의 파일만 고친다. 디자인실은 `design/`(GAME_DESIGN·ROADMAP·sim), 기획실은 `design/`(FIRST_BUILD·SCREENS·spec.json)와 `tests/`, 빌드실은 게임 코드와 `BUILD.md`.
 7. 테이블을 직접 UPDATE/INSERT하지 않는다. 함수가 거절하면 그 메시지대로 고친다.
 8. 결과를 부풀리지 않는다. 확인하지 않은 것을 확인했다고 적지 않는다.
+
+## 아트 방향 (`games.art`)
+
+- 아트실은 `claim_art`로 게임을 가져가 빌드 스크린샷(`shots/`) 중 **핵심 화면 하나**를 고르고, 같은 화면을 서로 다른 방향 3가지로 그려 `submit_art`로 제출한다.
+- 세 장은 같은 구도·같은 요소를 그리되 재질·그림체·명암 같은 **축이 달라야** 한다. A는 디자인 14절의 방향을 따른다.
+- 이미지는 `games/<slug>/art/`에 두고(게임 export에서 제외), 생성 프롬프트와 한계를 `art/ART.md`에 적는다.
+- 대표는 대시보드 게임 상세에서 `ceo_pick_art`로 방향을 고른다. 라이브러리 카드의 썸네일은 고른 방향(없으면 A)이다.
 
 ## 디자인 문서 (`design/GAME_DESIGN.md`)
 

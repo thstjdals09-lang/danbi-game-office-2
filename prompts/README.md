@@ -11,6 +11,7 @@
 | 기획실 | [planner.md](planner.md) | Opus | 매시간 | Supabase, 저장소 쓰기 | `games/<slug>/design/`, `tests/smoke.gd` |
 | 빌드실 | [builder.md](builder.md) | Opus | 매시간 | Supabase, 저장소 쓰기 | `games/<slug>/` (검사·설계 문서 제외) |
 | 검수실 | [qa.md](qa.md) | Sonnet | 매시간 | Supabase, 저장소 읽기 | 아니오 |
+| 아트실 | [artist.md](artist.md) | Sonnet | 2시간마다 | Supabase, Higgsfield(이미지 생성), 저장소 쓰기 | `games/<slug>/art/` |
 
 - 주기를 엇갈리게 둔다(예: 기획실 :55, 빌드실 :20, 검수실 :40). 빌드 후 CI가 끝난 뒤에 검수실이 오게 하기 위해서다.
 - 부서는 전부 DB 함수로만 상태를 바꾼다(`run_start`, `claim`, `submit_*`, `send_back`, `release`, `escalate`, `run_finish`).
@@ -26,6 +27,7 @@
 | 기획실 | 로컬 세션이 프롬프트대로 수행 | 정상. 얻은 교훈을 프롬프트에 반영함 |
 | 빌드실 | 로컬 세션이 프롬프트대로 수행 | 정상 (검사 78개 통과, 반송 1회 발생·처리) |
 | 검수실 | 로컬 세션이 프롬프트대로 수행 | 정상. 단 빌드한 세션이 검수해 독립 검수는 아니었음 |
+| 아트실 | 로컬 세션이 프롬프트대로 수행 | 정상. Higgsfield `gpt_image_2_5` 3장, 총 1.5 크레딧. 다시 생성한 장 없음 |
 
 예약을 켜기 전에 확인할 것
 1. 클라우드 루틴이 저장소에 push할 수 있는가 (`git push --dry-run origin HEAD:main`). 지금은 403.
@@ -36,7 +38,8 @@
 
 공통 설정
 - 저장소: `https://github.com/thstjdals09-lang/danbi-game-office-2`
-- 연결: Supabase 커넥터 하나만 (project_id `iqeqcnetdsusqkkxvver`)
+- 연결: Supabase 커넥터 (project_id `iqeqcnetdsusqkkxvver`). 아트실만 Higgsfield 커넥터 추가
+- 이미지 생성 비용: 게임 하나당 3장, 약 1.5 Higgsfield 크레딧(다시 생성하면 장당 0.5씩 추가)
 - 도구: Bash, Read, Glob, Grep (+ 파일을 고치는 부서는 Write, Edit)
 
 아래에서 `<부서>`, `<파일>`, `<한 줄 요약>`만 바꿔서 쓴다.
@@ -62,6 +65,7 @@ DB 접속: Supabase 커넥터의 execute_sql 도구를 project_id "iqeqcnetdsusq
 | 기획실 | `planner.md` | 디자인 문서를 다시 쓰지 말고 첫 빌드 조각을 고르세요. 검사 기대값은 sim 코드로 계산하세요. games/<slug>/ 안만 바꾸고 main에 push하세요. |
 | 빌드실 | `builder.md` | 기준은 design/FIRST_BUILD.md 와 SCREENS.md 입니다. tests/smoke.gd 와 design/ 은 바꾸지 마세요(해시로 대조됩니다). 틀렸다고 판단되면 send_back 으로 반송하세요. |
 | 검수실 | `qa.md` | CI 결과, tests/smoke.gd 해시, 수치, BUILD.md 대조표, 스크린샷을 모두 확인하세요. 코드를 고치거나 commit/push 하지 마세요. |
+| 아트실 | `artist.md` | 핵심 화면 하나를 고르고 같은 화면을 축이 다른 방향 3가지로 그리세요. 이미지는 Higgsfield 커넥터로 생성합니다. games/<slug>/art/ 안만 바꾸고 main에 push하세요. |
 
 ## 지금 등록되어 있는 Claude 루틴 (전부 예약 꺼짐)
 

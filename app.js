@@ -10,7 +10,8 @@
     { id: "designer", name: "디자인실" },
     { id: "planner", name: "기획실" },
     { id: "builder", name: "빌드실" },
-    { id: "qa", name: "검수실" }
+    { id: "qa", name: "검수실" },
+    { id: "artist", name: "아트실" }
   ];
   var STATIONS = [
     { stage: "idea", who: "디자인실", nm: "디자인 대기" },
@@ -27,7 +28,7 @@
   var PAGE = 20;
 
   var state = { games: [], runs: [], events: [], builds: [], limits: {}, play: null, ceo: false, email: null };
-  var ui = { view: "home", filter: "wip", query: "", shown: PAGE, sort: "queue", open: {} };
+  var ui = { view: "home", filter: "all", game: null, query: "", shown: PAGE, sort: "queue", open: {} };
 
   // ---------------------------------------------------------------- 유틸
 
@@ -82,7 +83,7 @@
     try {
       if (LIVE) {
         var r = await Promise.all([
-          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,design_summary,sim_status,design_version,spec_version,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
+          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,design_summary,sim_status,design_version,spec_version,art,art_pick,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
           sb.from("runs").select("*").order("started_at", { ascending: false }).limit(200),
           sb.from("events").select("*").order("id", { ascending: false }).limit(30),
           sb.from("builds").select("game_id,attempt,commit_sha,smoke_passed,created_at").order("created_at", { ascending: false }).limit(500),
@@ -188,12 +189,17 @@
     renderFactory();
   }
 
-  function setView(id) {
+  function setView(hash) {
+    var parts = String(hash || "").split("/");
+    var id = parts[0];
     if (!VIEWS.some(function (v) { return v.id === id; })) id = "home";
     ui.view = id;
+    ui.game = id === "games" && parts[1] ? decodeURIComponent(parts[1]) : null;
+    hash = id + (ui.game ? "/" + ui.game : "");
+    renderGames();
     VIEWS.forEach(function (v) { $("view-" + v.id).hidden = v.id !== id; });
     renderNav();
-    if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id);
+    if (location.hash !== "#" + hash) history.replaceState(null, "", "#" + hash);
     window.scrollTo(0, 0);
   }
 
@@ -226,7 +232,8 @@
     $("playtest").innerHTML = play.length ? play.map(function (g) {
       return '<article class="card attn"><div class="card-title">' + esc(g.title) + '<span class="mono">' + esc(versionText(g)) + "</span></div>" +
         '<div class="p">' + esc(g.pitch) + "</div>" +
-        '<div class="acts"><button class="btn go" type="button" data-play="' + g.id + '">▶ 플레이</button>' + docButton(g) + "</div>" +
+        '<div class="acts"><button class="btn go" type="button" data-play="' + g.id + '">▶ 플레이</button>' +
+        '<button class="btn" type="button" data-game="' + esc(g.slug) + '">' + (g.art ? "아트 방향 보기" : "게임 열기") + "</button>" + docButton(g) + "</div>" +
         '<div class="acts"><button class="btn" type="button" data-pt="keep" data-id="' + g.id + '"' + dis() + ">합격</button>" +
         '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis() + ">고쳐서 다시</button>" +
         '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div></article>";
@@ -246,44 +253,116 @@
     }).join("");
   }
 
-  // ---------------------------------------------------------------- 게임
+  // ---------------------------------------------------------------- 게임 (라이브러리 → 상세)
 
+  var LIB_STAGES = WIP_STAGES.concat(["playtest", "kept", "held", "dropped"]);
   var GAME_FILTERS = [
-    { id: "wip", label: "제작 중", stages: WIP_STAGES },
+    { id: "all", label: "전체", stages: WIP_STAGES.concat(["playtest", "kept"]) },
     { id: "playtest", label: "플레이 대기", stages: ["playtest"] },
+    { id: "wip", label: "제작 중", stages: WIP_STAGES },
     { id: "kept", label: "합격작", stages: ["kept"] },
-    { id: "off", label: "보류·버림", stages: ["held", "dropped"] },
-    { id: "all", label: "전체", stages: WIP_STAGES.concat(["playtest", "kept", "held", "dropped"]) }
+    { id: "off", label: "보류·버림", stages: ["held", "dropped"] }
   ];
 
+  function gameUrl(g, file) {
+    return "https://raw.githubusercontent.com/" + CFG.repo + "/main/games/" + encodeURIComponent(g.slug) + "/" + file;
+  }
+  function artOf(g, id) {
+    if (!g.art || !g.art.directions) return null;
+    return g.art.directions.find(function (d) { return d.id === id; }) || null;
+  }
+  // 카드 썸네일: 대표가 고른 방향 → A안 → 없음
+  function thumbOf(g) {
+    var d = artOf(g, g.art_pick || "A");
+    return d ? gameUrl(g, d.image) : null;
+  }
+  function canPlay(g) { return (g.stage === "playtest" || g.stage === "kept") && playable(g.slug) !== false; }
+  function stepsHtml(g) {
+    var step = STEP_OF[g.stage];
+    var stopped = g.stage === "held" || g.stage === "dropped";
+    var out = "";
+    for (var k = 0; k < 6; k++) {
+      out += '<i class="' + (stopped ? (k === 0 ? "stop" : "") : k < step || g.stage === "kept" ? "done" : k === step ? "now" : "") + '"></i>';
+    }
+    return '<span class="steps" aria-hidden="true">' + out + "</span>";
+  }
+
   function renderGames() {
+    var detail = ui.game ? state.games.find(function (g) { return g.slug === ui.game; }) : null;
+    $("gameLib").hidden = !!detail;
+    $("gameDetail").hidden = !detail;
+    if (detail) { renderGameDetail(detail); return; }
+
     $("gameFilters").innerHTML = GAME_FILTERS.map(function (f) {
       return '<button type="button" data-filter="' + f.id + '" aria-pressed="' + (f.id === ui.filter) + '">' + esc(f.label) + ' <span class="num">' + count(f.stages) + "</span></button>";
     }).join("");
     var filter = GAME_FILTERS.find(function (f) { return f.id === ui.filter; }) || GAME_FILTERS[0];
-    var order = ["playtest", "held", "qa", "building", "ready", "planning", "designed", "designing", "kept", "dropped"];
+    var order = ["playtest", "kept", "qa", "building", "ready", "planning", "designed", "designing", "held", "dropped"];
     var games = state.games.filter(function (g) { return filter.stages.indexOf(g.stage) >= 0; })
       .sort(function (a, b) { return order.indexOf(a.stage) - order.indexOf(b.stage) || new Date(b.stage_changed_at) - new Date(a.stage_changed_at); });
-    if (!games.length) { $("games").innerHTML = '<div class="empty">여기에 해당하는 게임이 없어요.</div>'; return; }
+    if (!games.length) { $("games").innerHTML = '<div class="empty" style="grid-column:1/-1">여기에 해당하는 게임이 없어요.</div>'; return; }
 
     $("games").innerHTML = games.map(function (g) {
-      var key = "g:" + g.id;
-      var step = STEP_OF[g.stage];
-      var stopped = g.stage === "held" || g.stage === "dropped";
-      var steps = "";
-      for (var k = 0; k < 6; k++) {
-        steps += '<i class="' + (stopped ? (k === 0 ? "stop" : "") : k < step || g.stage === "kept" ? "done" : k === step ? "now" : "") + '"></i>';
-      }
-      var canPlay = g.stage === "playtest" || g.stage === "kept";
-      var body = (g.design_summary ? '<div class="summary">' + esc(g.design_summary) + "</div>" : '<div class="p">' + esc(g.pitch) + "</div>") +
-        (g.fix_notes ? '<div class="note">' + esc(g.fix_notes) + "</div>" : "") +
-        (versionText(g) ? '<div class="mono">' + esc(versionText(g)) + " · " + ago(g.stage_changed_at) + "부터 이 단계</div>" : "") +
-        '<div class="acts">' + (canPlay ? '<button class="btn go" type="button" data-play="' + g.id + '">▶ 플레이</button>' : "") + docButton(g) +
-        (g.stage === "held" ? '<button class="btn" type="button" data-tri="go" data-id="' + g.id + '"' + dis() + ">다시 진행</button>" : "") + "</div>";
-      return '<details class="fold" data-fold="' + key + '"' + foldOpen(key) + '><summary><span class="chev">›</span><span class="fold-main"><span class="fold-title">' +
-        esc(g.title) + stageChip(g) + '</span><span class="fold-sub">' + esc(g.pitch) + '</span></span><span class="fold-side"><span class="steps" aria-hidden="true">' + steps +
-        '</span></span></summary><div class="fold-body">' + body + "</div></details>";
+      var thumb = thumbOf(g);
+      return '<button class="gcard" type="button" data-game="' + esc(g.slug) + '"><span class="thumb">' +
+        (thumb ? '<img loading="lazy" alt="" src="' + esc(thumb) + '">' : '<span class="ph">' + (WIP_STAGES.indexOf(g.stage) >= 0 ? "제작 중 · 아트 전" : "아트 방향 준비 전") + "</span>") +
+        '</span><span class="body"><span class="row">' + stageChip(g) + (canPlay(g) ? '<span class="playable">▶ 플레이 가능</span>' : "") + "</span>" +
+        '<span class="t">' + esc(g.title) + '</span><span class="d">' + esc(g.pitch) + '</span><span class="open">게임 열기 ↗</span></span></button>';
     }).join("");
+  }
+
+  function renderGameDetail(g) {
+    var html = '<button class="back" type="button" data-game="">← 게임 라이브러리</button>';
+    html += '<div class="ghead"><h2>' + esc(g.title) + stageChip(g) + "</h2>" + '<div class="p">' + esc(g.pitch) + "</div>" +
+      '<div class="chips">' + stepsHtml(g) + (versionText(g) ? '<span class="mono">' + esc(versionText(g)) + "</span>" : "") + "</div></div>";
+
+    // 플레이
+    var play = canPlay(g);
+    html += '<div class="playbar"><div><div class="label">게임 플레이</div><div class="p">' +
+      (play ? "웹에서 바로 플레이할 수 있어요." : g.stage === "playtest" || g.stage === "kept" ? "Web 빌드를 준비 중이에요." : "아직 빌드 전이에요. 검수를 통과하면 플레이할 수 있어요.") +
+      '</div></div><div class="acts">' + (play ? '<button class="btn go" type="button" data-play="' + g.id + '">▶ 웹에서 플레이</button>' : "") + docButton(g) + "</div></div>";
+
+    // 대표 판정 (플레이 대기일 때)
+    if (g.stage === "playtest") {
+      html += '<div class="acts"><button class="btn" type="button" data-pt="keep" data-id="' + g.id + '"' + dis() + ">합격</button>" +
+        '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis() + ">고쳐서 다시</button>" +
+        '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div>";
+    }
+    if (g.fix_notes) html += '<div class="note">' + esc(g.fix_notes) + "</div>";
+
+    // 아트 방향
+    html += '<div class="sec"><div class="sec-head"><h2>아트 방향</h2><span>' +
+      (g.art ? (g.art_pick ? g.art_pick + "안을 골랐어요. 다시 고를 수 있어요" : "마음에 드는 방향을 골라 주세요") : "") + "</span></div>";
+    if (g.art && g.art.directions) {
+      html += '<div class="arts">' + g.art.directions.map(function (d) {
+        var picked = g.art_pick === d.id;
+        return '<div class="art' + (picked ? " picked" : "") + '"><button class="pic" type="button" data-img="' + esc(gameUrl(g, d.image)) + '" data-title="' + esc(d.id + " · " + d.name) +
+          '"><img loading="lazy" alt="' + esc(d.id + "안: " + d.name) + '" src="' + esc(gameUrl(g, d.image)) + '"></button><div class="cap"><div class="nm"><b>' + esc(d.id) + "</b>" + esc(d.name) +
+          '</div><div class="ds">' + esc(d.description) + '</div><div class="acts"><button class="btn small' + (picked ? " go" : "") + '" type="button" data-pick="' + d.id + '" data-id="' + g.id + '"' + dis() + ">" +
+          (picked ? "✓ 고른 방향" : "이 방향으로") + "</button></div></div></div>";
+      }).join("") + "</div>";
+      if (g.art.key_screen) {
+        html += '<div class="keyshot"><img loading="lazy" alt="핵심 화면" src="' + esc(gameUrl(g, g.art.key_screen)) + '" data-img="' + esc(gameUrl(g, g.art.key_screen)) +
+          '" data-title="핵심 화면(실제 빌드)"><div><div class="label">핵심 화면 · 실제 빌드</div><div class="p">' + esc(g.art.key_reason || "") + "</div></div></div>";
+      }
+    } else {
+      html += '<div class="empty">' + (g.stage === "playtest" || g.stage === "kept" ? "아트실이 아직 작업하지 않았어요." : "빌드가 검수를 통과하면 아트실이 방향 3가지를 만들어요.") + "</div>";
+    }
+    html += "</div>";
+
+    // 설계 요약
+    if (g.design_summary) {
+      html += '<div class="sec"><div class="sec-head"><h2>설계 요약</h2><span></span></div><div class="summary">' + esc(g.design_summary) + "</div></div>";
+    }
+    $("gameDetail").innerHTML = html;
+  }
+
+  function openGame(slug) {
+    ui.game = slug || null;
+    renderGames();
+    var hash = "#games" + (ui.game ? "/" + ui.game : "");
+    if (location.hash !== hash) history.pushState(null, "", hash);
+    window.scrollTo(0, 0);
   }
 
   // ---------------------------------------------------------------- 아이디어
@@ -461,15 +540,28 @@
 
   // ---------------------------------------------------------------- 이벤트
 
+  function openImage(src, title) {
+    $("imgTitle").textContent = title || "";
+    $("imgBig").src = src;
+    $("imgDlg").showModal();
+  }
+
   document.addEventListener("click", async function (e) {
-    var el = e.target.closest("button");
+    var el = e.target.closest("button, img[data-img]");
     if (!el || el.disabled) return;
     var d = el.dataset;
     var g = d.id ? state.games.find(function (x) { return x.id === d.id; }) : null;
 
     if ("close" in d) { el.closest("dialog").close("cancel"); return; }
-    if (d.filter) { ui.filter = d.filter; renderGames(); if (!d.go) return; }
+    if (d.filter) { ui.filter = d.filter; ui.game = null; renderGames(); if (!d.go) return; }
     if (d.go) { setView(d.go); return; }
+    if ("game" in d) { if (ui.view !== "games") setView("games"); openGame(d.game); return; }
+    if (d.img) { openImage(d.img, d.title); return; }
+    if (d.pick && g) {
+      var same = g.art_pick === d.pick;
+      await act("ceo_pick_art", { p_game: g.id, p_pick: same ? null : d.pick }, g.title + " · " + (same ? "아트 방향 선택 취소" : "아트 방향 " + d.pick + " 선택"));
+      return;
+    }
     if (d.doc) { openDoc(state.games.find(function (x) { return x.id === d.doc; })); return; }
     if (d.doctab) { showDoc(d.doctab); return; }
     if (d.play) { openPlayer(state.games.find(function (x) { return x.id === d.play; })); return; }
@@ -578,6 +670,7 @@
     var g = state.games.find(function (x) { return x.id === a.p_game; });
     if (!g) return;
     if (fn === "ceo_star") g.starred = a.p_starred;
+    if (fn === "ceo_pick_art") { g.art_pick = a.p_pick; return; }
     if (fn === "ceo_triage") { if (a.p_decision === "go" && g.stage === "idea") g.starred = true; else g.stage = a.p_decision === "go" ? "ready" : a.p_decision === "hold" ? "held" : "dropped"; }
     if (fn === "ceo_playtest") g.stage = a.p_verdict === "keep" ? "kept" : a.p_verdict === "fix" ? "ready" : "dropped";
     g.stage_changed_at = new Date().toISOString();
