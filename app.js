@@ -427,7 +427,7 @@
 
   // ---------------------------------------------------------------- 아이디어
 
-  var SCORE_LABEL = { hook: "훅", core_loop: "반복", mobile_fit: "모바일", prototype: "시제품", asset: "에셋", visual: "화면", growth: "성장" };
+  var SCORE_LABEL = { hook: "훅", core_loop: "반복", depth: "깊이", growth: "성장", mobile_fit: "모바일", visual: "화면", prototype: "시제품", asset: "에셋" };
   // 디자인실이 가져갈 순서: ★ → 들어온 순
   function designerOrder(a, b) {
     if (a.starred !== b.starred) return a.starred ? -1 : 1;
@@ -477,7 +477,8 @@
     var g = items[i];
     function fact(label, html) { return html ? "<div><dt>" + label + "</dt><dd>" + html + "</dd></div>" : ""; }
     function nav(to, label, text) { return '<button class="btn ghost small" type="button" aria-label="' + label + '"' + (to ? ' data-idea="' + to.id + '"' : " disabled") + ">" + text + "</button>"; }
-    var bars = g.idea_scores ? '<div class="bars">' + Object.keys(SCORE_LABEL).map(function (k) {
+    // depth는 연구소 v3부터 들어온다. 없는 축은 그리지 않는다
+    var bars = g.idea_scores ? '<div class="bars">' + Object.keys(SCORE_LABEL).filter(function (k) { return g.idea_scores[k] != null; }).map(function (k) {
       var v = Number(g.idea_scores[k]) || 0;
       return "<div" + (v < 70 ? ' class="low"' : "") + "><span>" + SCORE_LABEL[k] + '</span><i><b style="width:' + Math.max(0, Math.min(100, v)) + '%"></b></i><span class="n num">' + v + "</span></div>";
     }).join("") + "</div>" : "";

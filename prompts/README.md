@@ -64,7 +64,7 @@ DB 접속: Supabase 커넥터의 execute_sql 도구를 project_id "iqeqcnetdsusq
 
 | 부서 | `<파일>` | `<한 줄 요약>` |
 | --- | --- | --- |
-| 아이디어 연구소 | `idea-lab.md` | CREATOR(8 lens, 내부 후보 16~20개) → STRUCTURE → CRITIC → PRODUCER 단계를 건너뛰지 마세요. 코드를 바꾸거나 commit/push 하지 마세요. |
+| 아이디어 연구소 | `idea-lab.md` | CREATOR(8 lens, 내부 후보 16~20개) → STRUCTURE(게임과 첫 조각을 따로) → 관문 → CRITIC → PRODUCER 단계를 건너뛰지 마세요. 후보는 첫 빌드가 아니라 완성판 기준으로 평가하세요. 코드를 바꾸거나 commit/push 하지 마세요. |
 | 디자인실 | `designer.md` | 초안 → 비평(최소 2바퀴) → 규칙 시뮬레이션 → ROADMAP → check_design 점검 → 커밋 → submit_design 순서를 건너뛰지 마세요. games/<slug>/ 안만 바꾸고 main에 push하세요. |
 | 기획실 | `planner.md` | 디자인 문서를 다시 쓰지 말고 첫 빌드 조각을 고르세요. 검사 기대값은 sim 코드로 계산하세요. games/<slug>/ 안만 바꾸고 main에 push하세요. |
 | 빌드실 | `builder.md` | 기준은 design/FIRST_BUILD.md 와 SCREENS.md 입니다. tests/smoke.gd 와 design/ 은 바꾸지 마세요(해시로 대조됩니다). 틀렸다고 판단되면 send_back 으로 반송하세요. |
