@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960" width="540" height="960" font-family="sans-serif">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fd3e8"/>
+      <stop offset="1" stop-color="#e9f3d2"/>
+    </linearGradient>
+    <linearGradient id="land" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9cc47a"/>
+      <stop offset="1" stop-color="#6fa04e"/>
+    </linearGradient>
+    <radialGradient id="snowhaze" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.7" stop-color="#ffffff" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <g id="pumpkin">
+      <ellipse rx="16" ry="13" fill="#f08a24" stroke="#8a4a10" stroke-width="2"/>
+      <path d="M-6 -11 q-4 11 0 22 M6 -11 q4 11 0 22" fill="none" stroke="#8a4a10" stroke-width="1.5"/>
+      <path d="M0 -13 q2 -8 8 -8" fill="none" stroke="#3f7a2c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="turnip">
+      <path d="M0 14 Q-13 4 -10 -4 Q0 -12 10 -4 Q13 4 0 14 Z" fill="#f4eef6" stroke="#7a4a86" stroke-width="2"/>
+      <path d="M-9 -3 Q0 -10 9 -3 Q0 0 -9 -3 Z" fill="#b06cc0"/>
+      <path d="M0 -8 q-8 -8 -10 -14 M0 -8 q0 -10 1 -16 M0 -8 q8 -8 10 -14" fill="none" stroke="#3f7a2c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <g id="wheat">
+      <path d="M0 16 V-8" stroke="#b98a1e" stroke-width="2.5"/>
+      <g fill="#f2c53d" stroke="#b98a1e" stroke-width="1.2">
+        <ellipse cx="0" cy="-14" rx="4" ry="7"/><ellipse cx="-5" cy="-6" rx="3.5" ry="6" transform="rotate(-25 -5 -6)"/><ellipse cx="5" cy="-6" rx="3.5" ry="6" transform="rotate(25 5 -6)"/>
+      </g>
+    </g>
+    <g id="house">
+      <rect x="-16" y="-14" width="32" height="26" fill="#f1e2c4" stroke="#5a3d24" stroke-width="2"/>
+      <polygon points="-22,-14 0,-34 22,-14" fill="#c4553a" stroke="#5a3d24" stroke-width="2"/>
+      <rect x="-5" y="-2" width="10" height="14" fill="#5a3d24"/>
+    </g>
+  </defs>
+
+  <!-- 하늘과 먼 산 -->
+  <rect width="540" height="960" fill="url(#land)"/>
+  <rect width="540" height="150" fill="url(#sky)"/>
+  <polygon points="0,150 70,96 150,138 250,80 350,134 440,92 540,146 540,160 0,160" fill="#8fb39a"/>
+  <polygon points="212,112 250,80 286,110 262,104 250,112 236,102" fill="#fff"/>
+
+  <!-- 고리 안쪽: 못과 숲 -->
+  <ellipse cx="270" cy="405" rx="118" ry="82" fill="#5fa9c9" stroke="#3f7f9c" stroke-width="3"/>
+  <ellipse cx="250" cy="390" rx="50" ry="14" fill="#8fcbe2" opacity="0.6"/>
+  <g fill="#3f7a2c" stroke="#2c5a1e" stroke-width="2">
+    <circle cx="170" cy="318" r="16"/><circle cx="192" cy="304" r="13"/><circle cx="352" cy="496" r="18"/><circle cx="378" cy="484" r="13"/><circle cx="166" cy="492" r="15"/>
+  </g>
+
+  <!-- 길(고리): 가까울수록 굵다 -->
+  <path id="road" d="M270 668 Q400 650 445 535 Q500 440 478 360 Q460 250 392 222 Q330 170 270 176 Q210 170 148 222 Q80 250 62 360 Q40 440 95 535 Q140 650 270 668 Z" fill="none" stroke="#d9c08a" stroke-width="13" stroke-linejoin="round"/>
+  <path d="M95 535 Q140 650 270 668 Q400 650 445 535" fill="none" stroke="#d9c08a" stroke-width="26" stroke-linecap="round"/>
+  <path d="M62 360 Q40 440 95 535 M445 535 Q500 440 478 360" fill="none" stroke="#d9c08a" stroke-width="19" stroke-linecap="round"/>
+
+  <!-- 겨울: 길을 따라 도는 눈. 오른쪽(호박밭) 쪽으로 다가온다 -->
+  <ellipse cx="330" cy="196" rx="150" ry="74" fill="url(#snowhaze)"/>
+  <path d="M205 188 Q240 172 270 176 Q330 170 392 222 Q418 234 432 262" fill="none" stroke="#ffffff" stroke-width="17" stroke-linecap="round"/>
+  <!-- 서리의 앞 끝: 길 위로 기어 온다 -->
+  <g fill="none" stroke="#bfe4f7" stroke-width="3" stroke-linecap="round">
+    <path d="M432 262 l8 16 M426 268 l-2 17 M440 258 l15 10"/>
+  </g>
+  <g fill="#fff" opacity="0.9"><circle cx="446" cy="286" r="3"/><circle cx="432" cy="294" r="2.5"/><circle cx="458" cy="276" r="2.5"/></g>
+
+  <!-- 뒤(4일 거리): 눈에 덮인 밭 -->
+  <ellipse cx="270" cy="170" rx="36" ry="11" fill="#eef6fb" stroke="#bcd3e0" stroke-width="2"/>
+  <path d="M264 168 l4 -12 l5 12" fill="none" stroke="#8a7a66" stroke-width="2.5"/>
+  <!-- 뒤 오른쪽(3일): 눈에 갇힌 먼 마을, 장이 닫혔다 -->
+  <g transform="translate(392,214) scale(0.62)">
+    <use href="#house" x="-20"/><use href="#house" x="20" y="4"/>
+    <polygon points="-42,-14 -20,-34 2,-14" fill="#fff"/><polygon points="-2,-10 20,-30 42,-10" fill="#fff"/>
+  </g>
+  <!-- 뒤 왼쪽(3일): 막 녹은 맨땅 -->
+  <ellipse cx="148" cy="226" rx="40" ry="13" fill="#5b3f27" stroke="#3d2917" stroke-width="2"/>
+  <g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M130 220 v8 M126 224 h8"/><path d="M164 226 v6 M161 229 h6"/></g>
+
+  <!-- 왼쪽(2일): 자라는 밀 -->
+  <ellipse cx="62" cy="366" rx="50" ry="18" fill="#7a5433" stroke="#3d2917" stroke-width="2"/>
+  <g stroke="#4f9a35" stroke-width="3" stroke-linecap="round"><path d="M34 366 v-14 M48 368 v-16 M62 369 v-17 M76 368 v-16 M90 366 v-14"/></g>
+  <g transform="translate(30,330)">
+    <g fill="#4f9a35"><circle cx="0" r="4.5"/><circle cx="11" r="4.5"/><circle cx="22" r="4.5"/><circle cx="33" r="4.5"/></g>
+    <g fill="none" stroke="#e0a900" stroke-width="2"><circle cx="46" r="4.5"/><circle cx="57" r="4.5"/><circle cx="68" r="4.5"/></g>
+  </g>
+
+  <!-- 오른쪽(2일): 호박밭. 고른 행선지 -->
+  <ellipse cx="478" cy="368" rx="52" ry="19" fill="#7a5433" stroke="#3d2917" stroke-width="2"/>
+  <ellipse cx="478" cy="364" rx="60" ry="30" fill="none" stroke="#ffe14d" stroke-width="4"/>
+  <ellipse cx="478" cy="364" rx="60" ry="30" fill="#ffe14d" opacity="0.18"/>
+  <g transform="translate(478,352) scale(1.25)"><use href="#pumpkin"/></g>
+  <g transform="translate(448,314)">
+    <circle cx="0" r="5" fill="#4f9a35"/>
+    <g fill="none" stroke="#e0a900" stroke-width="2.2"><circle cx="12" r="5"/><circle cx="24" r="5"/><circle cx="36" r="5"/><circle cx="48" r="5"/></g>
+    <!-- 도착하는 날의 모습: 첫 금구슬이 켜져 있다 -->
+    <circle cx="12" r="5" fill="#ffd22e"/>
+    <circle cx="12" r="9" fill="none" stroke="#fff" stroke-width="2"/>
+  </g>
+
+  <!-- 가는 길 미리 보기: 길 위에 하루씩 -->
+  <path d="M286 668 Q400 650 445 535 Q500 440 480 380" fill="none" stroke="#ffe14d" stroke-width="6" stroke-dasharray="2 16" stroke-linecap="round"/>
+  <g fill="#ffe14d" stroke="#8a6a00" stroke-width="2">
+    <circle cx="445" cy="535" r="9"/><circle cx="480" cy="392" r="9"/>
+  </g>
+
+  <!-- 오른쪽 앞(1일): 순무밭 -->
+  <ellipse cx="452" cy="560" rx="70" ry="25" fill="#7a5433" stroke="#3d2917" stroke-width="2.5"/>
+  <g stroke="#4f9a35" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M420 560 q-6 -12 -10 -16 M420 560 q4 -12 8 -16"/><path d="M452 564 q-6 -12 -10 -16 M452 564 q4 -12 8 -16"/><path d="M484 560 q-6 -12 -10 -16 M484 560 q4 -12 8 -16"/>
+  </g>
+  <g transform="translate(428,506)">
+    <g fill="#4f9a35"><circle cx="0" r="6"/><circle cx="15" r="6"/></g>
+    <g fill="none" stroke="#e0a900" stroke-width="2.5"><circle cx="32" r="6"/><circle cx="47" r="6"/></g>
+  </g>
+
+  <!-- 왼쪽 앞(1일): 고향 마을. 장이 열려 있고 호박을 찾는다 -->
+  <g transform="translate(88,522)">
+    <use href="#house" x="-30" y="-6"/><use href="#house" x="8" y="-14"/><use href="#house" x="34" y="6"/>
+    <!-- 좌판과 찾는 물건 -->
+    <rect x="-34" y="20" width="56" height="8" fill="#8a5a2b" stroke="#5a3d24" stroke-width="2"/>
+    <polygon points="-38,20 -30,2 18,2 26,20" fill="#e8524a" stroke="#5a3d24" stroke-width="2"/>
+    <g transform="translate(-6,-62)">
+      <rect x="-24" y="-20" width="48" height="38" rx="8" fill="#fff8e6" stroke="#5a3d24" stroke-width="2.5"/>
+      <polygon points="-6,18 6,18 0,28" fill="#fff8e6" stroke="#5a3d24" stroke-width="2.5"/>
+      <g transform="translate(-4,0) scale(0.8)"><use href="#pumpkin"/></g>
+      <path d="M14 -12 v10 M9 -7 h10" stroke="#d0342c" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- 앞(지금 선 곳): 다 익은 밀밭, 마지막 날 -->
+  <ellipse cx="270" cy="700" rx="200" ry="66" fill="#7a5433" stroke="#3d2917" stroke-width="3"/>
+  <g>
+    <use href="#wheat" transform="translate(96,694) scale(2)"/><use href="#wheat" transform="translate(132,712) scale(2.1)"/><use href="#wheat" transform="translate(168,726) scale(2.2)"/>
+    <use href="#wheat" transform="translate(372,726) scale(2.2)"/><use href="#wheat" transform="translate(408,712) scale(2.1)"/><use href="#wheat" transform="translate(444,694) scale(2)"/>
+    <use href="#wheat" transform="translate(214,738) scale(2.2)"/><use href="#wheat" transform="translate(326,738) scale(2.2)"/><use href="#wheat" transform="translate(270,744) scale(2.3)"/>
+  </g>
+  <!-- 이 밭의 구슬: 익은 날 셋 중 마지막 하나 -->
+  <g transform="translate(244,560)">
+    <g fill="none" stroke="#9a8a6a" stroke-width="3"><circle cx="0" r="9"/><circle cx="26" r="9"/></g>
+    <circle cx="52" r="10" fill="#ffd22e" stroke="#8a6a00" stroke-width="3"/>
+    <circle cx="52" r="16" fill="none" stroke="#e0442f" stroke-width="3" stroke-dasharray="4 5"/>
+  </g>
+
+  <!-- 수레와 나귀(주인공): 폭 약 200px, 수레만 124px -->
+  <g transform="translate(250,650)">
+    <!-- 나귀 -->
+    <g transform="translate(118,-4)">
+      <ellipse rx="34" ry="19" fill="#9a8672" stroke="#4a3c2e" stroke-width="2.5"/>
+      <path d="M-22 14 v24 M-8 16 v24 M10 16 v24 M24 14 v24" stroke="#4a3c2e" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="38" cy="-20" rx="17" ry="12" fill="#9a8672" stroke="#4a3c2e" stroke-width="2.5" transform="rotate(-20 38 -20)"/>
+      <path d="M30 -30 l-4 -18 l10 12 M40 -32 l2 -18 l8 14" fill="#9a8672" stroke="#4a3c2e" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="44" cy="-22" r="2.5" fill="#1c1c22"/>
+    </g>
+    <path d="M62 4 H88" stroke="#4a3c2e" stroke-width="4"/>
+    <!-- 수레 칸 넷: 호박, 순무, 순무, 빈 칸 -->
+    <rect x="-62" y="-14" width="124" height="42" rx="5" fill="#b0763a" stroke="#4a3c2e" stroke-width="3"/>
+    <path d="M-31 -14 V28 M0 -14 V28 M31 -14 V28" stroke="#4a3c2e" stroke-width="2"/>
+    <g transform="translate(-46,-16) scale(1.05)"><use href="#pumpkin"/></g>
+    <g transform="translate(-15,-16) scale(1.05)"><use href="#turnip"/></g>
+    <g transform="translate(16,-16) scale(1.05)"><use href="#turnip"/></g>
+    <rect x="34" y="-36" width="24" height="24" rx="5" fill="none" stroke="#fff8e6" stroke-width="2.5" stroke-dasharray="5 4"/>
+    <circle cx="-34" cy="34" r="19" fill="#5a3d24" stroke="#2c1d10" stroke-width="3"/>
+    <circle cx="-34" cy="34" r="6" fill="#d9c08a"/>
+    <circle cx="34" cy="34" r="19" fill="#5a3d24" stroke="#2c1d10" stroke-width="3"/>
+    <circle cx="34" cy="34" r="6" fill="#d9c08a"/>
+    <!-- 농부 -->
+    <g transform="translate(-84,-6)">
+      <rect x="-12" y="-6" width="24" height="40" rx="8" fill="#3b6ea8" stroke="#1f3350" stroke-width="2.5"/>
+      <circle cy="-18" r="12" fill="#f1c9a0" stroke="#4a3c2e" stroke-width="2.5"/>
+      <ellipse cy="-27" rx="24" ry="6" fill="#e9c75a" stroke="#8a6a00" stroke-width="2.5"/>
+      <path d="M-11 -28 Q0 -44 11 -28" fill="#e9c75a" stroke="#8a6a00" stroke-width="2.5"/>
+    </g>
+  </g>
+
+  <!-- 아래 띠 -->
+  <rect x="0" y="790" width="540" height="170" fill="#2a2118"/>
+  <path d="M0 790 H540" stroke="#5a3d24" stroke-width="4"/>
+
+  <!-- 달력 원반(가장 큰 계기): 눈이 고향에 닿으면 한 해가 끝난다 -->
+  <g transform="translate(88,876)">
+    <circle r="66" fill="#f1e2c4" stroke="#5a3d24" stroke-width="4"/>
+    <!-- 눈이 덮은 구간 -->
+    <path d="M0 0 L-19 -46 A50 50 0 0 1 48 -14 Z" fill="#fff" stroke="#bcd3e0" stroke-width="2"/>
+    <!-- 눈이 고향까지 갈 길(남은 날) -->
+    <path d="M52 -15 A54 54 0 0 1 -38 38" fill="none" stroke="#e0442f" stroke-width="5" stroke-dasharray="3 5"/>
+    <circle r="50" fill="none" stroke="#5a3d24" stroke-width="2"/>
+    <g fill="#5a3d24">
+      <circle cx="0" cy="50" r="5"/><circle cx="35" cy="35" r="4"/><circle cx="50" cy="0" r="4"/><circle cx="35" cy="-35" r="4"/><circle cx="0" cy="-50" r="4"/><circle cx="-35" cy="-35" r="4"/><circle cx="-50" cy="0" r="4"/>
+    </g>
+    <!-- 나 -->
+    <circle cx="0" cy="50" r="9" fill="#3b6ea8" stroke="#fff" stroke-width="2.5"/>
+    <!-- 고향 -->
+    <g transform="translate(-35,35) scale(0.5)"><use href="#house"/></g>
+    <text y="8" font-size="26" font-weight="800" text-anchor="middle" fill="#5a3d24">19</text>
+  </g>
+
+  <!-- 씨앗 주머니 셋: 끌어서 밭에 놓는다 -->
+  <g>
+    <g transform="translate(212,878)">
+      <path d="M-26 -14 Q-34 30 0 32 Q34 30 26 -14 Q0 -24 -26 -14 Z" fill="#c9a36a" stroke="#5a3d24" stroke-width="3"/>
+      <path d="M-18 -18 Q0 -10 18 -18" fill="none" stroke="#5a3d24" stroke-width="3"/>
+      <g transform="translate(0,8)"><use href="#turnip"/></g>
+    </g>
+    <g transform="translate(288,878)">
+      <path d="M-26 -14 Q-34 30 0 32 Q34 30 26 -14 Q0 -24 -26 -14 Z" fill="#c9a36a" stroke="#5a3d24" stroke-width="3"/>
+      <path d="M-18 -18 Q0 -10 18 -18" fill="none" stroke="#5a3d24" stroke-width="3"/>
+      <g transform="translate(0,10)"><use href="#wheat"/></g>
+    </g>
+    <g transform="translate(364,878)">
+      <path d="M-26 -14 Q-34 30 0 32 Q34 30 26 -14 Q0 -24 -26 -14 Z" fill="#c9a36a" stroke="#5a3d24" stroke-width="3"/>
+      <path d="M-18 -18 Q0 -10 18 -18" fill="none" stroke="#5a3d24" stroke-width="3"/>
+      <g transform="translate(0,9) scale(0.9)"><use href="#pumpkin"/></g>
+    </g>
+  </g>
+
+  <!-- 돈주머니: 올해 벌어야 할 만큼 차오른다 -->
+  <g transform="translate(468,872)">
+    <path d="M-34 -18 Q-46 44 0 46 Q46 44 34 -18 Q0 -30 -34 -18 Z" fill="#3a2e22" stroke="#d9c08a" stroke-width="3"/>
+    <path d="M-39 12 Q-40 44 0 46 Q40 44 39 12 Z" fill="#ffd22e"/>
+    <path d="M-34 -18 Q-46 44 0 46 Q46 44 34 -18 Q0 -30 -34 -18 Z" fill="none" stroke="#d9c08a" stroke-width="3"/>
+    <path d="M-24 -22 Q0 -12 24 -22" fill="none" stroke="#d9c08a" stroke-width="3"/>
+    <text y="6" font-size="22" font-weight="800" text-anchor="middle" fill="#fff8e6">34</text>
+    <text y="34" font-size="15" font-weight="700" text-anchor="middle" fill="#5a3d24">/ 60</text>
+  </g>
+</svg>
