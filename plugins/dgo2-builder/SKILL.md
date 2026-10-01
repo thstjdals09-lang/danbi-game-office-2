@@ -50,6 +50,7 @@ git push --dry-run origin HEAD:main
 2. design/sim/*.py — 규칙의 **기준 구현.** FIRST_BUILD.md 가 가리키는 클래스/함수를 한 줄씩 읽는다.
 3. tests/smoke.gd — 무엇이 어떤 값으로 검사되는지. 테스트 인터페이스가 실제로 어떻게 불리는지.
 4. design/SCREENS.md — 화면별 요소, 동작, 피드백.
+   design/mock/main.png, title.png, result.png 를 **열어 본다.** 빌드의 화면이 닿아야 할 모습이다(도형 시안).
 5. design/spec.json 의 not_now — 만들지 않을 것.
 6. design/GAME_DESIGN.md 는 FIRST_BUILD.md 가 절 번호로 가리키는 부분만(피드백, 비주얼 방향 등). 나머지는 이번 빌드 범위가 아니다.
 
@@ -106,6 +107,8 @@ git push --dry-run origin HEAD:main
   SCREENS.md 의 화면마다 한 장 이상 + 주 화면의 핵심 순간 3장 이상 + **그림 자리 확인 한 장**
   (assets/art/ 에 아무 그림이나 하나를 임시로 넣어 그 자리의 모양이 그림으로 바뀌는 것을 찍고, 임시 그림은 지운다).
 - python3 tools/screenshot.py games/<slug> → games/<slug>/shots/*.png 을 **직접 열어 본다.**
+  **주 화면 스크린샷을 design/mock/main.png 와 나란히 놓고 본다.** 구도, 크기, 요소의 자리가 시안과 같아야 한다.
+  시안보다 시험판처럼 보이면(말이 작다, 글자 버튼, 설명 글) 고치고 다시 찍는다.
   확인: SCREENS.md 의 요소가 다 있는가, 글자가 잘리거나 겹치는가, 한글이 네모로 깨지는가, 흑백으로 봐도 구분되는가,
   보드가 화면 위쪽에 있고 버튼이 엄지 영역에 있는가. 문제가 있으면 고치고 다시 찍는다.
 - 기본 콘텐츠를 플레이해서는 안 나오는 장면(드문 규칙, 불가능한 행동의 반응, 미리보기)은 debug_load 같은 장면 함수로

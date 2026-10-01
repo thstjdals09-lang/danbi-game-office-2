@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "dgo2-idea-lab",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "단비의 게임회사2 아이디어 연구소: 새 게임 아이디어를 넓게 찾아 구조화·비평한 뒤 제작 가치가 있는 것만 입고한다.",
   "author": {
     "name": "danbi-game-office-2"
