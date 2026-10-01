@@ -175,10 +175,12 @@ func _process(_delta: float) -> bool:
 			one_floor([], V(3, 6), [["B", V(3, 3)]])
 			acts("W W W W W W W")
 		2020:
-			shot("34-many-bombs")                 # (참고) 가만히 서서 맞는 중
-			one_floor([V(3, 4)], V(3, 6), [["B", V(6, 6)], ["W", V(3, 5)]])
-			acts("W W W W W")
-		2080:
-			shot("35-result-lose")                # 결과(패배)
+			shot("34-bomber-self-blast-win")      # 가만히 서 있었더니 폭탄병이 제 폭탄에 죽어 승리(체력 3, 오사 1)
+			# 벽에 갇혀 다가오지 못하는 폭탄병(거리 3)과 붙어서 치는 졸개. 가만히 서 있으면
+			# 1턴 치기(4) → 2턴 치기+폭발(2, 졸개도 폭발에 죽음) → 6턴 폭발(1) → 10턴 폭발(0)
+			one_floor([V(2, 3), V(4, 3), V(3, 2), V(3, 4)], V(3, 6), [["B", V(3, 3)], ["W", V(3, 5)]])
+			acts("W W W W W W W W W W")
+		2100:
+			shot("35-result-lose-bomb")           # 결과(패배): "10턴, 폭탄의 폭발"
 			quit(0)
 	return false
