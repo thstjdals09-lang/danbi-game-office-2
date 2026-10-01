@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 540 960" width="540" height="960">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1030"/>
+      <stop offset="0.7" stop-color="#1b1b45"/>
+      <stop offset="1" stop-color="#3a2a4a"/>
+    </linearGradient>
+    <radialGradient id="dawn" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff9a4d" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ff9a4d" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ghostglow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#8ff6ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8ff6ff" stop-opacity="0"/>
+    </radialGradient>
+    <!-- 겁내는 것 기호: 사람 머리 위와 물건에 같은 모양이 붙는다 -->
+    <g id="i-sound" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round">
+      <path d="M-7 -4 Q-3 0 -7 4 M-2 -7 Q4 0 -2 7 M3 -10 Q11 0 3 10"/>
+    </g>
+    <g id="i-dark">
+      <path d="M4 -9 A10 10 0 1 0 4 9 A7.5 7.5 0 1 1 4 -9 Z" fill="#fff"/>
+    </g>
+    <g id="i-move" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="-10,5 -5,-5 0,5 5,-5 10,5"/>
+    </g>
+  </defs>
+
+  <!-- 하늘 = 밤의 시계. 달이 새벽 쪽으로 넘어간다 -->
+  <rect width="540" height="960" fill="url(#sky)"/>
+  <ellipse cx="500" cy="140" rx="90" ry="60" fill="url(#dawn)"/>
+  <path d="M40 130 Q270 -20 500 130" fill="none" stroke="#6d6fa0" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>
+  <path d="M40 130 Q165 49 293 56" fill="none" stroke="#c9cbe8" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="293" cy="56" r="19" fill="#f4f0d0"/>
+  <circle cx="301" cy="50" r="15" fill="#15173c"/>
+  <!-- 멈춤(플레이 밖) -->
+  <g opacity="0.7"><circle cx="40" cy="44" r="20" fill="#2a2c58"/><rect x="33" y="35" width="5" height="18" fill="#c9cbe8"/><rect x="42" y="35" width="5" height="18" fill="#c9cbe8"/></g>
+
+  <!-- 지붕과 집 -->
+  <polygon points="6,184 270,100 534,184" fill="#2b2440"/>
+  <rect x="20" y="180" width="500" height="570" fill="#3b3350"/>
+
+  <!-- 방 4개 -->
+  <rect x="28" y="188" width="238" height="272" fill="#dcc994"/>
+  <rect x="274" y="188" width="238" height="272" fill="#e3cfa0"/>
+  <rect x="28" y="470" width="238" height="272" fill="#e6d3a3"/>
+  <rect x="274" y="470" width="238" height="272" fill="#dfcb98"/>
+  <!-- 방 사이 문틈 -->
+  <rect x="266" y="364" width="8" height="96" fill="#b9a26e"/>
+  <rect x="266" y="646" width="8" height="96" fill="#b9a26e"/>
+  <!-- 계단 (부엌 → 아이방) -->
+  <rect x="487" y="460" width="25" height="10" fill="#dfcb98"/>
+  <g fill="#a98f5c">
+    <rect x="424" y="703.2" width="88" height="38.8"/>
+    <rect x="436.5" y="664.4" width="75.5" height="38.8"/>
+    <rect x="449" y="625.6" width="63" height="38.8"/>
+    <rect x="461.5" y="586.8" width="50.5" height="38.8"/>
+    <rect x="474" y="548" width="38" height="38.8"/>
+    <rect x="486.5" y="509.2" width="25.5" height="38.8"/>
+    <rect x="499" y="470.4" width="13" height="38.8"/>
+  </g>
+  <!-- 현관문 -->
+  <rect x="16" y="640" width="14" height="102" fill="#7a4a2c"/>
+  <circle cx="26" cy="694" r="3" fill="#e9c46a"/>
+
+  <!-- ── 침실(왼쪽 위) ── -->
+  <rect x="40" y="424" width="124" height="36" rx="6" fill="#b7a274"/>
+  <rect x="44" y="410" width="40" height="18" rx="6" fill="#cbb98c"/>
+  <!-- 전등(어둠) -->
+  <rect x="118" y="188" width="4" height="26" fill="#5a4c3a"/>
+  <polygon points="78,256 162,256 146,212 94,212" fill="#f6e7a8" stroke="#5a4c3a" stroke-width="3"/>
+  <circle cx="162" cy="214" r="16" fill="#2a2440"/><use xlink:href="#i-dark" x="162" y="214"/>
+  <!-- 옷장(움직임) -->
+  <rect x="176" y="330" width="80" height="130" rx="4" fill="#8a6240" stroke="#5a3d26" stroke-width="3"/>
+  <line x1="216" y1="334" x2="216" y2="456" stroke="#5a3d26" stroke-width="3"/>
+  <circle cx="209" cy="398" r="3" fill="#e9c46a"/><circle cx="223" cy="398" r="3" fill="#e9c46a"/>
+  <circle cx="254" cy="332" r="16" fill="#2a2440"/><use xlink:href="#i-move" x="254" y="332"/>
+
+  <!-- ── 아이방(오른쪽 위) ── -->
+  <rect x="392" y="426" width="88" height="34" rx="6" fill="#c2ad7e"/>
+  <rect x="296" y="424" width="92" height="36" fill="#b7a274"/>
+  <!-- 오르골(소리) -->
+  <rect x="304" y="372" width="76" height="52" rx="5" fill="#c56a8a" stroke="#7d3a55" stroke-width="3"/>
+  <polygon points="304,372 380,372 372,348 312,348" fill="#d98aa6" stroke="#7d3a55" stroke-width="3"/>
+  <circle cx="342" cy="398" r="9" fill="#f6e7a8"/>
+  <circle cx="380" cy="350" r="16" fill="#2a2440"/><use xlink:href="#i-sound" x="378" y="350"/>
+
+  <!-- ── 거실(왼쪽 아래): 지금 유령이 스탠드에 깃들어 있다 ── -->
+  <!-- 이 방에 닿는다는 표시: 바닥 물듦 + 방 테두리 -->
+  <rect x="28" y="470" width="238" height="272" fill="#8ff6ff" opacity="0.10"/>
+  <rect x="28" y="724" width="238" height="18" fill="#8ff6ff" opacity="0.55"/>
+  <rect x="30" y="472" width="234" height="268" fill="none" stroke="#8ff6ff" stroke-width="3" stroke-dasharray="10 8" opacity="0.8"/>
+  <!-- TV(소리) — 방금 썼고 식는 중 -->
+  <rect x="36" y="726" width="80" height="16" fill="#6b5a3e"/>
+  <rect x="36" y="656" width="80" height="70" rx="5" fill="#4a4a55" stroke="#2a2a30" stroke-width="3" opacity="0.75"/>
+  <rect x="44" y="664" width="64" height="48" fill="#777b88" opacity="0.75"/>
+  <circle cx="114" cy="658" r="16" fill="#2a2440" opacity="0.6"/><use xlink:href="#i-sound" x="112" y="658" opacity="0.6"/>
+  <path d="M100 644 A16 16 0 0 1 130 658" fill="none" stroke="#c9cbe8" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  <!-- 아빠: 따지는 사람. 손전등으로 TV를 살핀다. 어둠을 겁낸다 -->
+  <polygon points="129,694 116,664 116,724" fill="#fff3b0" opacity="0.75"/>
+  <rect x="129" y="668" width="50" height="74" rx="12" fill="#34507a"/>
+  <circle cx="154" cy="652" r="17" fill="#e8b98f"/>
+  <rect x="123" y="688" width="14" height="10" rx="3" fill="#22262e"/>
+  <circle cx="154" cy="604" r="20" fill="#2a2440" stroke="#6a5a80" stroke-width="6"/>
+  <circle cx="154" cy="604" r="20" fill="none" stroke="#d94fd0" stroke-width="6" stroke-dasharray="44 126" transform="rotate(-90 154 604)"/>
+  <use xlink:href="#i-dark" x="154" y="604"/>
+  <!-- 맞는 사람 표시: 겁 고리 둘레의 유령빛 -->
+  <circle cx="154" cy="604" r="27" fill="none" stroke="#8ff6ff" stroke-width="3" stroke-dasharray="5 6"/>
+  <!-- 스탠드(어둠) + 깃든 유령 + 기운 고리 -->
+  <circle cx="222" cy="618" r="60" fill="url(#ghostglow)"/>
+  <ellipse cx="222" cy="738" rx="22" ry="5" fill="#5a4c3a"/>
+  <rect x="220" y="640" width="4" height="98" fill="#5a4c3a"/>
+  <polygon points="194,642 250,642 238,596 206,596" fill="#f6e7a8" stroke="#8ff6ff" stroke-width="4"/>
+  <circle cx="214" cy="620" r="4.5" fill="#12333a"/><circle cx="230" cy="620" r="4.5" fill="#12333a"/>
+  <circle cx="222" cy="618" r="40" fill="none" stroke="#2f5560" stroke-width="7" opacity="0.7"/>
+  <circle cx="222" cy="618" r="40" fill="none" stroke="#8ff6ff" stroke-width="7" stroke-linecap="round" stroke-dasharray="167 251" transform="rotate(-90 222 618)"/>
+  <circle cx="250" cy="586" r="16" fill="#12333a" stroke="#8ff6ff" stroke-width="2"/><use xlink:href="#i-dark" x="250" y="586"/>
+
+  <!-- ── 부엌(오른쪽 아래): 엄마가 아이를 달래는 중 ── -->
+  <!-- 찬장(움직임) -->
+  <rect x="290" y="492" width="90" height="70" rx="4" fill="#8a6240" stroke="#5a3d26" stroke-width="3"/>
+  <line x1="335" y1="496" x2="335" y2="558" stroke="#5a3d26" stroke-width="3"/>
+  <circle cx="312" cy="528" r="9" fill="#f1ece0"/><circle cx="358" cy="528" r="9" fill="#f1ece0"/>
+  <circle cx="380" cy="494" r="16" fill="#2a2440"/><use xlink:href="#i-move" x="380" y="494"/>
+  <!-- 달램: 둘을 감싸는 부드러운 금빛 -->
+  <ellipse cx="352" cy="694" rx="60" ry="62" fill="#ffd66b" opacity="0.28"/>
+  <ellipse cx="352" cy="694" rx="60" ry="62" fill="none" stroke="#f0b429" stroke-width="3"/>
+  <!-- 엄마: 다독이는 사람. 움직이는 것을 겁낸다 -->
+  <polygon points="298,742 346,742 337,672 307,672" fill="#a8483f"/>
+  <circle cx="322" cy="655" r="16" fill="#e8b98f"/><circle cx="322" cy="636" r="8" fill="#5a3320"/>
+  <path d="M337 690 Q356 700 368 706" fill="none" stroke="#e8b98f" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="322" cy="598" r="20" fill="#2a2440" stroke="#6a5a80" stroke-width="6"/>
+  <circle cx="322" cy="598" r="20" fill="none" stroke="#d94fd0" stroke-width="6" stroke-dasharray="25 126" transform="rotate(-90 322 598)"/>
+  <use xlink:href="#i-move" x="322" y="598"/>
+  <!-- 아이: 소리 지르는 아이. 소리를 겁낸다. 겁이 내려가는 중 -->
+  <rect x="366" y="696" width="36" height="46" rx="10" fill="#d98a2b"/>
+  <circle cx="384" cy="683" r="14" fill="#e8b98f"/>
+  <circle cx="384" cy="638" r="20" fill="#2a2440" stroke="#6a5a80" stroke-width="6"/>
+  <circle cx="384" cy="638" r="20" fill="none" stroke="#d94fd0" stroke-width="6" stroke-dasharray="69 126" transform="rotate(-90 384 638)"/>
+  <use xlink:href="#i-sound" x="382" y="638"/>
+  <!-- 겁이 빠져나가는 방울 -->
+  <g fill="#f0b429"><circle cx="410" cy="650" r="4"/><circle cx="416" cy="664" r="3.2"/><circle cx="412" cy="677" r="2.4"/></g>
+
+  <!-- 땅 -->
+  <rect x="0" y="750" width="540" height="210" fill="#141a2a"/>
+  <rect x="0" y="750" width="540" height="8" fill="#2c3a2c"/>
+
+  <!-- 마당: 쫓겨난 식구가 서는 자리 (아직 아무도 없다) -->
+  <g fill="none" stroke="#5b6388" stroke-width="3" stroke-dasharray="6 6">
+    <rect x="34" y="846" width="40" height="64" rx="10"/><circle cx="54" cy="830" r="14"/>
+    <polygon points="88,910 128,910 121,852 95,852"/><circle cx="108" cy="836" r="13"/>
+    <rect x="142" y="872" width="30" height="38" rx="9"/><circle cx="157" cy="860" r="11"/>
+  </g>
+
+  <!-- 놀래키기 단추: 깃든 물건의 기호 + 기운 고리 (스탠드와 같은 값) -->
+  <circle cx="270" cy="872" r="62" fill="#12333a" stroke="#1f6b78" stroke-width="4"/>
+  <circle cx="270" cy="872" r="52" fill="none" stroke="#2f5560" stroke-width="9"/>
+  <circle cx="270" cy="872" r="52" fill="none" stroke="#8ff6ff" stroke-width="9" stroke-linecap="round" stroke-dasharray="218 327" transform="rotate(-90 270 872)"/>
+  <g transform="translate(270 872) scale(3)"><use xlink:href="#i-dark"/></g>
+</svg>
