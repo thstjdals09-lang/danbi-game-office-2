@@ -37,6 +37,9 @@ def main():
 
     out = os.path.join(game, "shots")
     os.makedirs(out, exist_ok=True)
+    # Godot가 캡처 이미지를 게임 리소스로 가져오지 않게 한다
+    with open(os.path.join(out, ".gdignore"), "w") as f:
+        f.write("")
     for f in glob.glob(os.path.join(out, "*.png")):
         os.remove(f)
 
