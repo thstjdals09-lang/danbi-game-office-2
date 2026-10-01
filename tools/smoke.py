@@ -16,6 +16,9 @@ import subprocess
 import sys
 
 ERROR_PATTERNS = re.compile(r"SCRIPT ERROR|Parse Error|Invalid call|ERROR: .*(res://|Script)|Failed to load script")
+# 첫 import 중에는 아직 변환되지 않은 리소스(폰트 등)를 읽지 못했다는 오류가 정상적으로 나온다.
+# import 단계는 스크립트 오류만 보고, 리소스 문제는 다음 실행 단계에서 잡는다.
+IMPORT_ERROR_PATTERNS = re.compile(r"SCRIPT ERROR|Parse Error|Failed to load script")
 
 
 def find_godot(explicit):
@@ -44,7 +47,7 @@ def main():
     failed = []
 
     _, out = run(godot, game, ["--import"], 300)
-    if ERROR_PATTERNS.search(out):
+    if IMPORT_ERROR_PATTERNS.search(out):
         failed.append("import 중 스크립트 오류")
         print(out)
 

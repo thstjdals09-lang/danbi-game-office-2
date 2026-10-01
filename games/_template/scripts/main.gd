@@ -13,7 +13,7 @@ var font: Font
 
 
 func _ready() -> void:
-	font = ThemeDB.fallback_font
+	font = load("res://assets/fonts/NotoSansKR-Medium.ttf")
 
 
 func _process(_delta: float) -> void:

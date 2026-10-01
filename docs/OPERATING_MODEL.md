@@ -86,6 +86,7 @@ DB가 거절하는 경우 (`validate_spec`):
 - 화면 기준 크기: 세로 540×960, 가로 960×540.
 - `games/<slug>/SPEC.md`: DB의 기획서를 사람이 읽을 수 있게 옮긴 것. 빌드실이 쓴다.
 - `games/<slug>/tests/smoke.gd`: `must_work`마다 `check("M<n>", ...)`를 하나 이상 둔다. 입력은 메인 씬의 `debug_*` 훅으로 흉내 낸다.
+- 글자는 템플릿에 들어 있는 `res://assets/fonts/NotoSansKR-Medium.ttf`(한글 전체 + 영문, OFL)로 그린다. Godot 기본 폰트는 웹에서 한글이 네모로 깨진다.
 - 외부 에셋 없이 도형과 기본 폰트로 시작해도 된다. 에셋을 넣으면 `games/<slug>/assets/`에 두고 출처를 `SPEC.md`에 적는다.
 
 ## CI

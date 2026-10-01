@@ -16,6 +16,10 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="keep"
 window/handheld/orientation=__ORIENT__
 
+[gui]
+
+theme/custom_font="res://assets/fonts/NotoSansKR-Medium.ttf"
+
 [input_devices]
 pointing/emulate_touch_from_mouse=true
 

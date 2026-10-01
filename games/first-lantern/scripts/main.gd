@@ -32,7 +32,7 @@ var font: Font
 
 
 func _ready() -> void:
-	font = ThemeDB.fallback_font
+	font = load("res://assets/fonts/NotoSansKR-Medium.ttf")
 	rng.randomize()
 	best = _load_best()
 

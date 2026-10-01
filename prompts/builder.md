@@ -22,6 +22,7 @@
    - games/<slug>/SPEC.md에 DB의 spec을 사람이 읽을 수 있게 옮긴다 (spec_version 표시).
 4. 구현
    - spec의 screens, core_loop, controls, win_lose, art_direction을 구현한다. not_now는 만들지 않는다.
+   - 글자는 res://assets/fonts/NotoSansKR-Medium.ttf 로 그린다 (ThemeDB.fallback_font는 웹에서 한글이 깨진다).
    - 입력은 InputEventScreenTouch로 받는다 (마우스는 project.godot 설정으로 터치가 된다).
    - tests/smoke.gd에 must_work마다 check("M<n>", ...)를 하나 이상 둔다.
      입력은 메인 씬의 debug_* 함수로 흉내 낸다. 마지막에 "SMOKE PASS"를 출력하고 실패가 있으면 exit 1.
