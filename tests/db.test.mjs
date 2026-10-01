@@ -59,7 +59,18 @@ e = await err("select add_idea('bad-score2','x','x','x','x',null,$1::jsonb)", [J
 ok(e && e.includes("SCORES_INVALID"), "점수 항목 누락 거절: " + e);
 e = await err("select add_idea('bad-why','x','x','x','x',null,null,$1::text[])", [["a", "b", "c", "d", "e"]]);
 ok(e && e.includes("WHY_INVALID"), "승격 이유 5개 거절: " + e);
+
+// 아이디어 요약: 한 판의 흐름과 구조 정리를 디자인실에 넘긴다
+const brief = { play: ["시작한다", "고른다", "결과를 본다"], in_run: "빌드", between_runs: "없음", systems: "하나", tenth_run: "더 어렵다", input: "탭" };
+await q("select set_idea_brief('scored-idea',$1::jsonb)", [JSON.stringify(brief)]);
+ok((await q("select idea_brief from games where id=$1", [g0]))[0].idea_brief.play.length === 3, "아이디어 요약 저장");
+e = await err("select set_idea_brief('scored-idea',$1::jsonb)", [JSON.stringify({ ...brief, play: ["한 줄뿐"] })]);
+ok(e && e.includes("BRIEF_INVALID"), "한 판의 흐름 3줄 미만 거절: " + e);
+e = await err("select set_idea_brief('scored-idea',$1::jsonb)", [JSON.stringify({ play: brief.play })]);
+ok(e && e.includes("BRIEF_INVALID"), "요약 항목 누락 거절: " + e);
 await q("select ceo_triage($1,'drop')", [g0]);
+e = await err("select set_idea_brief('scored-idea',$1::jsonb)", [JSON.stringify(brief)]);
+ok(e && e.includes("대기 중인 아이디어가 아닙니다"), "대기 중이 아니면 요약 수정 거절: " + e);
 
 // 디자인실은 대표 승인 없이 아이디어를 가져간다. ★ 먼저, 그다음 들어온 순.
 const H = "a".repeat(64), H2 = "b".repeat(64);

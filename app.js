@@ -87,7 +87,7 @@
     try {
       if (LIVE) {
         var r = await Promise.all([
-          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,design_summary,sim_status,design_version,spec_version,art,art_pick,milestone,keep_notes,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
+          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,idea_brief,design_summary,sim_status,design_version,spec_version,art,art_pick,milestone,keep_notes,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
           sb.from("runs").select("*").order("started_at", { ascending: false }).limit(200),
           sb.from("events").select("*").order("id", { ascending: false }).limit(30),
           sb.from("builds").select("game_id,attempt,commit_sha,smoke_passed,created_at").order("created_at", { ascending: false }).limit(500),
@@ -492,12 +492,17 @@
       return "<div" + (v < 70 ? ' class="low"' : "") + "><span>" + SCORE_LABEL[k] + '</span><i><b style="width:' + Math.max(0, Math.min(100, v)) + '%"></b></i><span class="n num">' + v + "</span></div>";
     }).join("") + "</div>" : "";
     var why = g.why_promoted && g.why_promoted.length ? "<ul>" + g.why_promoted.map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul>" : "";
+    // 아이디어 요약은 연구소가 입고 뒤에 붙인다. 예전 아이디어에는 없다
+    var b = g.idea_brief || {};
+    var play = b.play && b.play.length ? "<ol>" + b.play.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") + "</ol>" : "";
     $("ideaBody").innerHTML =
       '<div class="iv-top"><span class="iv-turn">' + (turn[g.id] === 1 ? "다음 디자인 차례" : turn[g.id] + "번째 차례") + (g.genre ? " · " + esc(g.genre) : "") +
       '</span><span class="iv-nav">' + nav(items[i - 1], "이전 아이디어", "‹") + '<span class="num">' + (i + 1) + " / " + items.length + "</span>" + nav(items[i + 1], "다음 아이디어", "›") +
       '<button class="btn ghost small" type="button" data-close>닫기</button></span></div>' +
       "<h3>" + esc(g.title) + '</h3><p class="iv-pitch">' + esc(g.pitch) + '</p><dl class="iv-facts">' +
-      fact("조작", esc(g.core_verb)) + fact("재미", esc(g.fun_hypothesis)) + fact("먼저 검증할 것", esc(g.next_test)) + fact("승격 이유", why) + fact("연구소 평가", bars) +
+      fact("조작", esc(g.core_verb)) + fact("한 판의 흐름", play) + fact("재미", esc(g.fun_hypothesis)) +
+      fact("한 판 안에서", esc(b.in_run)) + fact("판과 판 사이", esc(b.between_runs)) + fact("맞물리는 것", esc(b.systems)) + fact("열 번째 판", esc(b.tenth_run)) +
+      fact("먼저 검증할 것", esc(g.next_test)) + fact("승격 이유", why) + fact("연구소 평가", bars) +
       '</dl><div class="acts"><button class="btn small istar" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred + '"' + dis() +
       '>★ 먼저 디자인</button><button class="btn bad small" type="button" data-tri="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div>";
     if (!dlg.open) dlg.showModal();

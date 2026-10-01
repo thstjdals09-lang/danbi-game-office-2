@@ -25,8 +25,14 @@ git push --dry-run origin HEAD:main
 1. select run_start('designer'); 로 run_id를 받는다. owner = 'designer:<run_id>'.
 2. select * from claim('designer', '<owner>');
    - 행이 없으면 run_finish('<run_id>', 'noop', '디자인할 아이디어 없음') 후 종료.
-3. 받은 행의 title, pitch, core_verb, fun_hypothesis, genre, idea_scores, why_promoted, next_test, fix_notes를 읽는다.
+3. 받은 행의 title, pitch, core_verb, fun_hypothesis, genre, idea_scores, why_promoted, next_test, idea_brief, fix_notes를 읽는다.
    - next_test는 아이디어 연구소가 남긴 "가장 먼저 검증할 의문"이다. 깊이 검증에서 반드시 답한다.
+   - idea_brief는 아이디어 연구소가 이 게임을 어떻게 생각했는지의 정리다(없으면 예전 아이디어이니 건너뛴다).
+     play(한 판의 흐름), in_run(한 판 안에서 쌓이는 것), between_runs(판 사이에 남는 것),
+     systems(맞물리는 시스템), tenth_run(열 번째 판의 차이), input(입력 방식).
+     이것을 출발점으로 삼는다. 처음부터 다시 추론하지 말고 여기서 시작해 검증하고 깊게 판다.
+     다만 정답이 아니라 가설이다. 비평과 시뮬레이션에서 틀렸다고 드러나면 바꾸고,
+     무엇을 왜 바꿨는지 15절에 "아이디어 요약과 달라진 점"으로 적는다.
    - fix_notes가 있으면 반송된 건이다. games/<slug>/design/ 의 기존 문서를 읽고, 지적된 문제를 고친 새 버전을 만든다.
 
 === 1. DESIGNER — 초안 ===

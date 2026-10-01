@@ -19,7 +19,7 @@
 
 | 부서 | 가져가는 단계 | 만드는 것 | 프롬프트 |
 | --- | --- | --- | --- |
-| 아이디어 연구소 | — | 아이디어(점수·승격 이유·검증 질문) | `prompts/idea-lab.md` |
+| 아이디어 연구소 | — | 아이디어(점수·승격 이유·검증 질문·한 판의 흐름 등 요약) | `prompts/idea-lab.md` |
 | 디자인실 | `idea` | `design/GAME_DESIGN.md`(16절), `design/sim/`, `design/ROADMAP.md` | `prompts/designer.md` |
 | 기획실 | `designed` | `design/FIRST_BUILD.md`, `design/SCREENS.md`, `design/spec.json`, `tests/smoke.gd` | `prompts/planner.md` |
 | 빌드실 | `ready` | 게임 코드(`scripts/rules.gd` 규칙 · `main.gd` 화면), `BUILD.md`(SCREENS 대조표), `shots/*.png`, `tests/extra.gd` | `prompts/builder.md` |
