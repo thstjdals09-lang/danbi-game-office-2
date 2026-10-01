@@ -555,9 +555,44 @@ def summarize(name, strat, seeds, delay=3, sword_cd=SWORD_CD):
     return dict(wins=wins / n, reached=sum(reached) / n, dmg=per_floor_dmg, turns=per_floor_turn, kills=kills, fail=fail_floor)
 
 
-FIRST_BUILD_FLOORS = ["E1 첫걸음", "E2 궁수의 복도", None]   # 1차 빌드의 세 층(3층은 아래 F3)
 F3 = dict(walls=[(1, 2), (5, 2), (3, 3)], start=(3, 6), enemies=[("A", (0, 0)), ("W", (3, 0)), ("A", (6, 1))],
           spawns=[(5, "W", (0, 3)), (9, "W", (6, 4))])
+
+
+# 3차: 고정 층 캠페인 10개. 1~5층 = 체험 구간(2차 빌드의 다섯 층 그대로), 6~10층 = 본편(폭탄병 등장).
+# 6층은 손으로 만든 폭탄병 소개 층, 7~10층은 "1수 앞 봇은 다치고 3수 앞 봇은 다치지 않는" 층을 탐색으로 골랐다.
+CAMPAIGN = [
+    ("1 첫걸음", EXAMPLES["E1 첫걸음"]),
+    ("2 궁수의 복도", EXAMPLES["E2 궁수의 복도"]),
+    ("3 두 개의 사선", F3),
+    ("4 등 뒤", EXAMPLES["E4 등 뒤"]),
+    ("5 협공", EXAMPLES["E5 협공"]),
+    ("6 째깍", dict(walls=[(1, 3), (5, 3)], start=(3, 6), enemies=[("B", (3, 1)), ("W", (0, 0))],
+                  spawns=[(6, "W", (6, 0))])),
+    ("7 불꽃과 방패", dict(walls=[(0, 2), (4, 4), (5, 1), (5, 2)], start=(3, 6),
+                      enemies=[("W", (6, 1)), ("S", (0, 0)), ("B", (2, 2))], spawns=[(5, "S", (3, 0))])),
+    ("8 화약고", dict(walls=[(2, 1), (3, 2), (5, 1), (6, 2)], start=(3, 6),
+                   enemies=[("B", (5, 3)), ("W", (3, 0)), ("A", (5, 0))], spawns=[(5, "W", (4, 0)), (9, "A", (0, 0))])),
+    ("9 십자 포화", dict(walls=[(0, 4), (1, 4), (3, 0), (5, 2), (6, 6)], start=(3, 6),
+                    enemies=[("A", (4, 2)), ("S", (1, 1)), ("B", (5, 0)), ("A", (5, 3))],
+                    spawns=[(5, "S", (6, 5)), (9, "B", (0, 0))])),
+    ("10 메아리의 방", dict(walls=[(1, 0), (1, 3), (1, 5), (2, 0), (2, 4)], start=(3, 6),
+                      enemies=[("S", (5, 1)), ("B", (1, 1)), ("A", (0, 3)), ("W", (6, 3)), ("S", (5, 0))],
+                      spawns=[(5, "B", (6, 1)), (9, "A", (0, 0))])),
+]
+
+
+def campaign_run(strat, seed=1, carry=True):
+    """캠페인 10층을 이어서. carry=False 면 층마다 체력 5로 따로 본다(층별 난이도 비교용)."""
+    hp, rows = HP_MAX, []
+    for name, fl in CAMPAIGN:
+        g = play_floor(fl, strat, random.Random(seed), 3, hp if carry else HP_MAX)
+        rows.append((name, g.won(), g.turn, g.dmg_taken, dict(g.kills)))
+        if carry:
+            if not g.won():
+                break
+            hp = min(HP_MAX, g.hp + 1)
+    return rows
 
 
 def first_build_run(strat, sword_cd):
@@ -617,8 +652,31 @@ def main():
     print(f"  제자리 베기만: 평균 {old['nm2']['reached']:.2f}층 → {res['nm2']['reached']:.2f}층")
     print(f"  계획 이득(2수-1수 평균 층, 2수는 같은 10런): {old['p2']['reached'] - old['p1']['reached']:+.2f} → {p2new['reached'] - res['p1']['reached']:+.2f}")
 
+    print("\n== 5. 3차: 고정 층 캠페인 10개 (1~5 체험, 6~10 본편) ==")
+    print("  층별(층마다 체력 5로 따로): 1수 앞 / 2수 앞 / 3수 앞 — 클리어 여부 턴(피해)")
+    per = {k: campaign_run(make_planner(k), carry=False) for k in (1, 2, 3)}
+    for i, (name, _) in enumerate(CAMPAIGN):
+        cells = []
+        for k in (1, 2, 3):
+            _, won, t, d, _k = per[k][i]
+            cells.append(f"{'O' if won else 'X'} {t}턴({d})")
+        print(f"   {name}: " + " / ".join(cells))
+    for part, lo, hi in (("체험 1~5층", 0, 5), ("본편 6~10층", 5, 10)):
+        print(f"  {part} 받은 피해 합: " + ", ".join(f"{k}수 앞 {sum(r[3] for r in per[k][lo:hi])}" for k in (1, 2, 3)))
+    for label, strat in (("1수 앞", make_planner(1)), ("2수 앞", make_planner(2)), ("3수 앞", make_planner(3)),
+                         ("제자리 베기만 2수", make_planner(2, allow_move=False)), ("도망만", s_flee), ("맴돌기", s_spin)):
+        rows = campaign_run(strat)
+        cleared = sum(1 for r in rows if r[1])
+        kills = {"stomp": 0, "swing": 0, "friendly": 0, "crush": 0}
+        for r in rows:
+            for kk in kills:
+                kills[kk] += r[4][kk]
+        last = rows[-1]
+        tail = "완주" if cleared == len(CAMPAIGN) else f"{last[0]}에서 {'턴 제한' if last[2] >= 60 else '체력 0'}"
+        print(f"  이어서 [{label}] {cleared}/10층, 피해 {sum(r[3] for r in rows)}, {sum(r[2] for r in rows)}턴, {tail}, 처치 {kill_share(kills)}")
+
     if full:
-        print("\n== 5. (--full) 베기 금지 봇, 메아리 지연 민감도 ==")
+        print("\n== 6. (--full) 베기 금지 봇, 메아리 지연 민감도 ==")
         summarize("3수 앞, 베기 금지", make_planner(3, allow_swing=False), seeds[:4])
         for d in (2, 3, 4):
             a = summarize(f"2수 앞 d={d}", make_planner(2), seeds[:10], delay=d)
