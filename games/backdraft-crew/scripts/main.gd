@@ -230,7 +230,7 @@ func _do(a: String) -> bool:
 	var heat_before: Array = rules.heat.duplicate()
 	var was_carrying: bool = rules.carry >= 0
 	if not rules.act(a):
-		_add_fx("reject", 0.18, {})
+		_add_fx("reject", 0.18, {"dir": DIRS.find(a.right(1))})
 		return false
 	last_action = a
 	forecast = _forecast()
@@ -722,7 +722,7 @@ func _draw_door(d: int) -> void:
 		if sign == "burning":
 			col = Color("ff5a3a").lerp(Color("ffb38a"), 0.5 + 0.5 * sin(clk * 6.0))        # 달아오른 문
 			draw_rect(r.grow(-2), Color(1.0, 0.3, 0.15, 0.22))
-		draw_line(hinge, hinge + dirv * 40.0, col, 7)
+		draw_line(hinge, hinge + dirv * lerpf(40.0, 20.0, open_amt), col, 7)       # 열린 문짝은 칸 밖으로 나가지 않게 접힌다
 		draw_circle(hinge, 4, Color("7a6038"))
 		if not dr["open"] and dr["hp"] < Rules.DOOR_HP:
 			_txt("%d" % dr["hp"], Vector2(r.position.x + 26, r.position.y + 40), 12, C_WARN)
@@ -805,6 +805,11 @@ func _draw_me() -> void:
 		c = slide_from.lerp(c, slide_t)
 	for f in _fx_of("reject"):
 		c.x += sin(f["t"] / f["d"] * TAU * 2.0) * 5.0
+		if f["dir"] >= 0:
+			# 막힌 쪽 칸 경계에 짧은 × (흔들림만으로는 한 장면에서 잘 안 보인다)
+			var m: Vector2 = _center(rules.pos) + DIRV[f["dir"]] * 22.0
+			draw_line(m + Vector2(-7, -7), m + Vector2(7, 7), C_WARN, 3)
+			draw_line(m + Vector2(7, -7), m + Vector2(-7, 7), C_WARN, 3)
 	var r := Rect2(c - Vector2(22, 22), Vector2(CELL, CELL))
 	var white := not _fx_of("hurt").is_empty()
 	_icon_me(r, white)

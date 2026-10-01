@@ -80,13 +80,64 @@ func _plan() -> void:
 	add(40, func(): shot("15-c-before-close"))
 	add(2, func(): game.debug_press("close"))
 	add(10, func(): shot("16-c-close-button"))
-	add(2, func(): play(GOLD_C.substr(game.last_action.length()), 0))
-	add(2, _c_spray)
-	add(5, func(): shot("17-c-spray"))
-	add(40, func(): shot("18-c-wet-cells"))
+	# 작은 장면(debug_load)으로 찍는 것: 물 3칸, 젖은 칸, 거절, 문 닫기 미리보기, 붕괴 예고와 잔해, 탄 문
+	add(2, func(): game.debug_load(scene({"state": {5: "#####f#####", 4: "#####f#####", 3: "#####f#####"}, "start": 71})))
+	add(30, func(): shot("17-scene-three-fires"))
+	add(2, func(): game.debug_act("SU"))
+	add(4, func(): shot("18-spray-three-cells"))
+	add(40, func(): shot("19-wet-cells"))
 	add(2, func(): game.debug_swipe(Vector2(270, 300), Vector2(200, 300)))
-	add(3, func(): shot("19-reject-shake"))
+	add(2, func(): shot("20-reject-shake"))
+	add(20, func(): game.debug_load(scene({"door": "/", "start": 60})))
+	add(2, func(): game.debug_press("close"))
+	add(20, func(): shot("21-close-mode-preview"))
+	add(2, func(): game.debug_load(scene({"door": "/", "state": {4: "#########f#"}, "room_hp": 4, "start": 104})))
+	add(2, func(): game.debug_act("W"); game.debug_act("W"))
+	add(30, func(): shot("22-collapse-warning"))
+	add(2, func():
+		for i in 6:
+			game.debug_act("W"))
+	add(40, func(): shot("23-collapsed-rubble"))
+	add(2, func(): game.debug_load(scene({"state": {5: "#####f#####"}, "door_hp": 2, "start": 93})))
+	add(2, func():
+		for i in 4:
+			game.debug_act("W"))
+	add(30, func(): shot("24-burnt-door"))
 	add(2, func(): quit(0))
+
+
+## 작은 장면: 세로 복도(x=5, 방 0) + 오른쪽 방(x 7~9, y 4~6, 방 1) + 왼쪽 방(x 1~3, 방 2). 문은 (6,5)와 (4,5).
+## opts: door("+" 닫힘 / "/" 열림), state({줄 번호: 11글자, # 은 그대로 둠}), room_hp(방 1의 버팀), door_hp(문 (6,5)의 버팀), start(칸 번호)
+func scene(opts: Dictionary) -> String:
+	var d: String = opts.get("door", "+")
+	var fl: Array = []
+	var rm: Array = []
+	var st: Array = []
+	for y in 13:
+		if y == 0:
+			fl.append("###########")
+		elif y == 12:
+			fl.append("#####E#####")
+		elif y == 5:
+			fl.append("#..." + d + "." + d + "...#")
+		elif y == 4 or y == 6:
+			fl.append("#...#.#...#")
+		else:
+			fl.append("#####.#####")
+		rm.append(" 222 0 111 " if y >= 4 and y <= 6 else ("     0     " if y >= 1 and y <= 11 else "           "))
+		var row := "           "
+		if (opts.get("state", {}) as Dictionary).has(y):
+			row = (opts["state"][y] as String).replace("#", " ")
+		st.append(row)
+	var doors := {}
+	if opts.has("door_hp"):
+		doors["61"] = opts["door_hp"]
+	var b := {"name": "scene", "title": "장면", "water": 8, "floor": fl, "room": rm, "state": st, "heat": {}, "fuel": {}, "doors": doors,
+		"rooms": [{"air": 11, "gas": 0, "smolder": false, "front": -1, "hp": 30, "collapsed": false},
+			{"air": 9, "gas": 0, "smolder": false, "front": -1, "hp": opts.get("room_hp", 30), "collapsed": false},
+			{"air": 9, "gas": 0, "smolder": false, "front": -1, "hp": 30, "collapsed": false}],
+		"victims": [], "start": opts.get("start", 137)}
+	return JSON.stringify(b)
 
 
 ## 불 칸을 찾아 그 옆까지는 못 가더라도, 지금 자리에서 네 방향 중 불이 있는 칸으로 걸어 들어간다. 없으면 기다린다.
