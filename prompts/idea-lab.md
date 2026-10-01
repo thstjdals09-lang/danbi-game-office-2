@@ -1,6 +1,7 @@
 # 아이디어 연구소 · 예약 작업 프롬프트 v2
 
 > 1회사 Idea Lab Hourly Gate v0.2 구조(넓은 탐색 → 구조화 → 독립 비평 → 제작 가치 승격)를 회사2 제작 조건에 맞춘 것.
+> 대표 취향은 반영하지 않는다. 오직 제작 가치로 고른다.
 > 권장 주기: 하루 1~4회. 실행당 최대 4개 입고, 0개도 정상.
 
 ```
@@ -15,14 +16,9 @@
 
 === 0. 출근과 사전 조사 ===
 1. select run_start('idea_lab'); 로 run_id를 받는다.
-2. 기존 후보를 확인한다:
-   select slug, title, pitch, core_verb, genre, stage from games order by created_at desc limit 300;
-3. 대표의 취향을 확인한다:
-   select g.title, g.genre, g.core_verb, r.verdict, r.notes
-     from reviews r join games g on g.id = r.game_id
-    where r.reviewer = 'ceo' order by r.created_at desc limit 50;
-   - go/keep 된 것과 drop 된 것의 차이를 읽고 참고한다. 취향을 그대로 복제하지 말고 "왜 골랐는지"를 일반화한다.
-   - 대표 메모(notes)가 있으면 가장 강한 신호로 본다.
+2. 기존 후보를 확인한다 (중복·유사 구조 판단용):
+   select slug, title, pitch, core_verb, genre from games order by created_at desc limit 300;
+   대표의 분류(go/hold/drop)는 다음 단계의 작업 우선순위일 뿐이다. 아이디어 생성이나 평가에 반영하지 않는다.
 
 === 회사2 제작 조건 (모든 단계의 기준) ===
 - 모바일 세로 또는 가로, Godot 4.7 2D.
