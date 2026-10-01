@@ -58,6 +58,11 @@ git push --dry-run origin HEAD:main
      요소별로 무엇으로 그릴지, 색·재질·조명, "keep the same grid layout and element positions", "game UI screenshot",
      화면 안 글자는 넣지 않거나 최소로("no extra text").
    - use_unlim 은 넣지 않는다. 크레딧이 모자라면 생성하지 말고 run_finish(..., 'failed', '이미지 크레딧 부족') 후 release_art.
+   - **생성 요청은 한 번만 보낸다.** 요청하자마자 받은 job_id 를 games/<slug>/art/jobs.json 에 적어 둔다(index, job_id, 방향 이름).
+     대기열이 길어 몇 분씩 "queued"로 남아 있어도 다시 요청하지 않는다 — 같은 job_id 를 jobs_wait 로 계속 확인할 뿐이다.
+     시작할 때 jobs.json 이 이미 있으면(앞 실행이 요청만 하고 끝난 경우) 새로 요청하지 말고 그 job_id 부터 확인한다.
+     요청이 오류로 끝나 job_id 를 못 받았으면, 다시 보내기 전에 show_generations 로 방금 만들어진 것이 없는지 먼저 본다.
+     다시 생성하는 것은 4번의 "결과를 열어 보고 문제가 있는 그 장만"일 때뿐이다. 30분이 지나도 안 끝나면 release_art 후 failed 로 끝낸다.
 3. jobs_wait 로 끝날 때까지 기다린다. 결과 URL을 내려받는다:
    curl -L -o games/<slug>/art/A.png "<url>"  (B, C 도)
 4. 세 장을 **직접 열어 본다.** 다음이면 그 장만 다시 생성한다(장당 최대 2번까지):

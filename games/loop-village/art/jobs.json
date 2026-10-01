@@ -1,0 +1,18 @@
+{
+ "model": "gpt_image_2_5",
+ "requested_at": "2026-10-01",
+ "jobs": [
+  {
+   "direction": "A",
+   "job_id": "3f243017-fff3-431f-96be-4d9de4b2fb8c"
+  },
+  {
+   "direction": "B",
+   "job_id": "60dea4da-0ccc-404b-b3c8-5704974ecb33"
+  },
+  {
+   "direction": "C",
+   "job_id": "c80f83d5-0be0-48d1-9568-94103c1d41f1"
+  }
+ ]
+}
