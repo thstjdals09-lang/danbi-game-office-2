@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>단비의 게임회사2</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='9' fill='%23f3c86a'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #07111e; --panel: #0d1a2c; --panel-2: #0a1626; --line: #233853; --line-soft: rgba(255,255,255,.06);
+    --text: #edf4ff; --muted: #8fa3bf; --dim: #5f7694;
+    --accent: #74a7ff; --green: #55d6a8; --amber: #f3c86a; --red: #ff7d8e; --purple: #bc9cff; --cyan: #67d9eb;
+    --radius: 16px; --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); }
+  body { color: var(--text); font: 14px/1.5 "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif; padding: 0 16px 56px; }
+  button { font: inherit; color: inherit; }
+  .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .mono { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  [hidden] { display: none !important; }
+
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 0 4px; }
+  .topbar h1 { margin: 0; font-size: 22px; font-weight: 800; }
+  .topbar .sub { color: var(--muted); font-size: 12px; }
+  .top-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .demo-tag { font-size: 11px; color: var(--muted); border: 1px dashed var(--line); padding: 6px 10px; border-radius: 999px; }
+  .demo-tag b { color: var(--amber); letter-spacing: .06em; }
+
+  .btn { font-size: 12px; background: #16294a; border: 1px solid #2b4a78; border-radius: 9px; padding: 7px 11px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: #1c3460; }
+  .btn.ghost { background: transparent; border-color: var(--line); color: var(--muted); }
+  .btn.go { background: var(--green); border-color: var(--green); color: #06221a; font-weight: 700; }
+  .btn.warn { background: transparent; border-color: rgba(243,200,106,.45); color: var(--amber); }
+  .btn.bad { background: transparent; border-color: rgba(255,125,142,.4); color: var(--red); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn:focus-visible, .tab:focus-visible, .star:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 18px 20px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+  .ptitle { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .ptitle h2 { margin: 0; font-size: 15px; }
+  .ptitle span { font-size: 11px; color: var(--dim); }
+  .row2 { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 18px; }
+  @media (max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
+
+  /* 출근부 */
+  .depts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }
+  @media (max-width: 760px) { .depts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .dept { padding: 12px 16px; border-left: 1px solid var(--line-soft); display: grid; gap: 3px; min-width: 0; }
+  .dept:first-child { border-left: 0; }
+  .dept .name { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; }
+  .dept .when { font-size: 11px; color: var(--muted); }
+  .dept .sum { font-size: 11px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dim); }
+  .dot.success { background: var(--green); } .dot.noop { background: var(--cyan); } .dot.running { background: var(--accent); }
+  .dot.blocked { background: var(--amber); } .dot.failed { background: var(--red); }
+
+  /* 결재함 */
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .tab[aria-selected="true"] { background: #1a3050; color: var(--text); border-color: #2b4a78; }
+  .tab b { margin-left: 4px; color: var(--amber); }
+  .tab b.zero { color: var(--dim); }
+  .list { display: grid; gap: 8px; }
+  .item { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line-soft); }
+  .item.attn { border-color: rgba(243,200,106,.35); }
+  .item .t { font-size: 14px; font-weight: 700; }
+  .item .p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .item .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.05); color: var(--muted); }
+  .chip.verb { color: var(--cyan); background: rgba(103,217,235,.1); }
+  .chip.att { color: var(--purple); background: rgba(188,156,255,.1); }
+  .item .note { font-size: 12px; color: var(--amber); margin-top: 6px; white-space: pre-wrap; }
+  .item .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .star { background: none; border: 0; cursor: pointer; font-size: 18px; line-height: 1; color: var(--dim); padding: 2px; align-self: start; }
+  .star[aria-pressed="true"] { color: var(--amber); }
+  .bullet { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); margin-top: 6px; }
+  .search { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; color: var(--text); font: inherit; font-size: 13px; }
+  .empty { font-size: 12px; color: var(--dim); padding: 16px 4px; text-align: center; }
+
+  /* 진열대 */
+  .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .card { border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); overflow: hidden; display: grid; }
+  .card .cover { aspect-ratio: 3 / 4; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, rgba(243,200,106,.35), transparent 55%), #0b1627; font-size: 13px; font-weight: 700; text-align: center; padding: 10px; }
+  .card .cover.playtest { background: radial-gradient(circle at 50% 40%, rgba(116,167,255,.35), transparent 55%), #0b1627; }
+  .card .info { padding: 10px; display: grid; gap: 6px; }
+  .card .info .mono { font-size: 10px; }
+
+  /* 생산 라인 */
+  .line-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .line { display: grid; grid-template-columns: repeat(7, minmax(108px, 1fr)); gap: 14px; min-width: 820px; }
+  .station { position: relative; padding: 12px; border: 1px solid var(--line-soft); background: var(--panel-2); border-radius: 12px; display: grid; gap: 4px; align-content: start; }
+  .station:not(:last-child)::after { content: "›"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%); color: var(--dim); }
+  .station .who { font-size: 10px; letter-spacing: .08em; color: var(--dim); font-weight: 700; }
+  .station .nm { font-size: 12px; font-weight: 500; }
+  .station .ct { font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .station .cap { font-size: 10px; color: var(--muted); }
+  .station .names { font-size: 10px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .station.full { border-color: rgba(243,200,106,.45); }
+  .station.goal .ct { color: var(--green); }
+  .side { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+
+  /* 사건 */
+  .events { display: grid; }
+  .ev { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+  .ev:last-child { border-bottom: 0; }
+  .ev .tm { font-size: 11px; color: var(--dim); }
+  @media (max-width: 560px) { .ev { grid-template-columns: 1fr; gap: 2px; } }
+
+  /* 대화상자 */
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); padding: 0; max-width: calc(100vw - 32px); }
+  dialog::backdrop { background: rgba(3,8,15,.75); }
+  .dlg { padding: 18px 20px; display: grid; gap: 12px; width: min(420px, calc(100vw - 32px)); }
+  .dlg h3 { margin: 0; font-size: 15px; }
+  .dlg textarea, .dlg input { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; color: var(--text); font: inherit; }
+  .dlg textarea { min-height: 110px; resize: vertical; }
+  .dlg .acts { display: flex; justify-content: flex-end; gap: 8px; }
+  .dlg .hint { font-size: 12px; color: var(--muted); }
+  .player { padding: 12px; display: grid; gap: 10px; }
+  .player-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .player iframe { border: 0; border-radius: 12px; background: #000; display: block; width: min(405px, calc(100vw - 56px)); aspect-ratio: 9 / 16; max-height: calc(100vh - 140px); }
+  .player iframe.landscape { width: min(720px, calc(100vw - 56px)); aspect-ratio: 16 / 9; }
+  .player .noplay { width: min(405px, calc(100vw - 56px)); padding: 40px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1a3050; border: 1px solid #2b4a78; padding: 10px 16px; border-radius: 10px; font-size: 13px; max-width: calc(100vw - 32px); z-index: 10; }
+  .toast.err { background: #3a1621; border-color: rgba(255,125,142,.5); }
+  .foot { font-size: 11px; color: var(--dim); border-top: 1px solid var(--line-soft); padding-top: 14px; display: grid; gap: 4px; }
+  .foot a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="topbar">
+    <div>
+      <h1>단비의 게임회사2</h1>
+      <div class="sub">대표 대시보드 · 결정할 것 · 플레이할 것 · 공장 상태</div>
+    </div>
+    <div class="top-actions">
+      <span class="demo-tag" id="demoTag" hidden><b>예시 데이터</b> · Supabase 연결 전</span>
+      <span class="mono" id="updated"></span>
+      <button class="btn ghost" id="refresh" type="button">새로고침</button>
+      <button class="btn" id="login" type="button">대표 로그인</button>
+    </div>
+  </header>
+
+  <section class="depts" id="depts" aria-label="부서 출근부"></section>
+
+  <div class="row2">
+    <section class="panel" aria-labelledby="inboxTitle">
+      <div class="ptitle"><h2 id="inboxTitle">대표 결재함</h2><span id="inboxHint">대표만 할 수 있는 결정</span></div>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <input class="search" id="search" type="search" placeholder="아이디어 검색 (제목, 설명, 조작)" hidden>
+      <div class="list" id="inbox"></div>
+      <button class="btn ghost" id="more" type="button" hidden>더 보기</button>
+    </section>
+
+    <section class="panel" aria-labelledby="shelfTitle">
+      <div class="ptitle"><h2 id="shelfTitle">진열대</h2><span>눌러서 바로 플레이</span></div>
+      <div class="shelf" id="shelf"></div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="lineTitle">
+    <div class="ptitle"><h2 id="lineTitle">생산 라인</h2><span>단계별 현재 대기 수</span></div>
+    <div class="line-scroll"><div class="line" id="line"></div></div>
+    <div class="side" id="side"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="evTitle">
+    <div class="ptitle"><h2 id="evTitle">사건</h2><span>최근 30건</span></div>
+    <div class="events" id="events"></div>
+  </section>
+
+  <footer class="foot">
+    <div>운영 규칙: <a id="docLink" href="#" target="_blank" rel="noopener">docs/OPERATING_MODEL.md</a> · 상태 변경은 DB 함수로만 이루어집니다.</div>
+  </footer>
+</div>
+
+<dialog id="noteDlg">
+  <form class="dlg" method="dialog">
+    <h3 id="noteTitle"></h3>
+    <div class="hint" id="noteHint"></div>
+    <textarea id="noteText"></textarea>
+    <div class="acts">
+      <button class="btn ghost" type="button" data-close>취소</button>
+      <button class="btn go" value="ok" type="submit" id="noteOk">보내기</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="loginDlg">
+  <form class="dlg" method="dialog" id="loginForm">
+    <h3>대표 로그인</h3>
+    <div class="hint">등록된 대표 메일로 로그인 링크를 보냅니다. 메일의 링크를 누르면 이 화면으로 돌아옵니다.</div>
+    <input id="loginEmail" type="email" placeholder="메일 주소" autocomplete="email">
+    <div class="acts">
+      <button class="btn ghost" type="button" data-close>취소</button>
+      <button class="btn go" value="ok" type="submit">링크 보내기</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="playDlg">
+  <div class="player">
+    <div class="player-head">
+      <strong id="playTitle"></strong>
+      <form method="dialog"><button class="btn ghost" type="submit">닫기</button></form>
+    </div>
+    <div id="playBody"></div>
+  </div>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+config/name="__TITLE__"
+config/description="__PITCH__"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[display]
+window/size/viewport_width=__W__
+window/size/viewport_height=__H__
+window/size/window_width_override=__WO__
+window/size/window_height_override=__HO__
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=__ORIENT__
+
+[input_devices]
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.027, 0.067, 0.118, 1)

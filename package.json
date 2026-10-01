@@ -1,0 +1,13 @@
+{
+  "name": "danbi-game-office-2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/db.test.mjs",
+    "smoke": "python tools/smoke.py",
+    "serve": "python -m http.server 5173"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

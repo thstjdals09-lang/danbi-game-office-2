@@ -1,0 +1,110 @@
+name: ci
+
+# main에 push될 때마다:
+# 1. games/* 전부 자동 검사(tools/smoke.py)
+# 2. 통과한 게임은 Web으로 export → play/<slug>/
+# 3. 대시보드 + play/ 를 GitHub Pages로 배포
+# 4. 한 게임이라도 검사에 실패하면 마지막에 빨간불(배포는 그대로 진행)
+#
+# 게임마다 커밋 상태 "smoke/<slug>"(success|failure)를 남긴다.
+# 검수실은 빌드 커밋의 이 상태를 보고 CI 통과 여부를 기록한다.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+
+  games:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Smoke test and export
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p _site/play
+          echo '{"commit":"'"$GITHUB_SHA"'","games":{' > _site/play/status.json
+          first=1; failed=0
+          for dir in games/*/; do
+            slug=$(basename "$dir")
+            [ "$slug" = "_template" ] && continue
+            echo "::group::$slug"
+            if python3 tools/smoke.py "$dir" --godot godot; then
+              ok=true
+              mkdir -p "_site/play/$slug"
+              if ! godot --headless --path "$dir" --export-release "Web" "$PWD/_site/play/$slug/index.html"; then
+                echo "::error::$slug Web export 실패"; ok=false
+              fi
+            else
+              echo "::error::$slug 자동 검사 실패"; ok=false
+            fi
+            echo "::endgroup::"
+            [ "$ok" = false ] && failed=$((failed+1))
+            [ $first = 1 ] || echo ',' >> _site/play/status.json; first=0
+            echo "\"$slug\":{\"smoke\":$ok}" >> _site/play/status.json
+            if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+              state=$([ "$ok" = true ] && echo success || echo failure)
+              gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state=$state -f context="smoke/$slug" \
+                -f description="자동 검사 + Web export" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null
+            fi
+          done
+          echo '}}' >> _site/play/status.json
+          cat _site/play/status.json
+          echo "FAILED=$failed" >> "$GITHUB_ENV"
+
+      - name: Add dashboard
+        run: cp index.html app.js config.js _site/
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: _site
+
+      - name: Fail if any game failed
+        if: env.FAILED != '0'
+        run: |
+          echo "자동 검사 또는 export 실패: $FAILED개"
+          exit 1
+
+  deploy:
+    needs: games
+    if: always() && github.event_name != 'pull_request' && needs.games.result != 'cancelled'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
