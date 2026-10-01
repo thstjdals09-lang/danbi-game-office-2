@@ -1,8 +1,13 @@
 """메아리 발자국 — 규칙 시뮬레이션(종이 프로토타입).
 
 GAME_DESIGN.md 6절 규칙을 그대로 구현하고, 여러 전략으로 8층 런을 돌려
-지배 전략·핵심 메커닉 필요성·난이도 곡선·메아리 지연(2/3/4) 민감도를 숫자로 확인한다.
+지배 전략·핵심 메커닉 필요성·난이도 곡선을 숫자로 확인한다.
 표준 라이브러리만, 시드 고정, exit 0.
+
+    python3 sim.py          기본(2차 설계 기준 규칙 + 칼 하나 규칙의 전·후 비교). 5분 안에 끝난다
+    python3 sim.py --full   위에 더해 메아리 지연(2/3/4) 민감도와 베기 금지 봇까지(오래 걸린다)
+
+2차(v2)에서 바뀐 규칙: 칼 하나(SWORD_CD). Game(..., sword_cd=0)으로 1차 규칙을 그대로 재현할 수 있다.
 """
 import random
 import sys
@@ -15,6 +20,7 @@ OPP = {"U": "D", "D": "U", "L": "R", "R": "L"}
 HP_MAX = 5
 SQUEEZE_TURN = 30   # 이 턴 이후 3턴마다 졸개 증원
 FLOORS = 8
+SWORD_CD = 3        # 칼 하나: 베기를 하면 그 칼을 메아리가 휘두를 때까지(3턴) 다시 벨 수 없다. 0이면 1차 규칙
 
 
 def add(p, d):
@@ -41,7 +47,8 @@ class Enemy:
 
 
 class Game:
-    def __init__(self, walls, start, enemies, spawns, delay=3, hp=HP_MAX):
+    def __init__(self, walls, start, enemies, spawns, delay=3, hp=HP_MAX, sword_cd=SWORD_CD):
+        self.sword_cd = sword_cd
         self.walls = frozenset(walls)
         self.player = start
         self.hp = hp
@@ -59,6 +66,7 @@ class Game:
     def copy(self):
         g = Game.__new__(Game)
         g.walls, g.player, g.hp, g.delay = self.walls, self.player, self.hp, self.delay
+        g.sword_cd = self.sword_cd
         g.hist = list(self.hist)
         g.turn = self.turn
         g.enemies = [e.copy() for e in self.enemies]
@@ -86,14 +94,27 @@ class Game:
     def lost(self):
         return self.hp <= 0
 
+    def sword_wait(self):
+        """칼이 돌아올 때까지 남은 턴 수(0이면 지금 벨 수 있다).
+
+        칼은 하나다. 베기를 하면 그 칼은 메아리가 휘두를 때까지 과거에 묶여 있다.
+        = 최근 sword_cd턴(hist[turn-sword_cd+1 .. turn]) 안에 베기가 있으면 벨 수 없다.
+        = 화면의 발자국 ③②① 중 하나에 칼 표시가 있으면 벨 수 없다.
+        """
+        for k in range(self.turn, max(0, self.turn - self.sword_cd), -1):
+            if self.hist[k][1][0] == "S":
+                return k + self.sword_cd - self.turn
+        return 0
+
     def legal_actions(self):
         acts = ["W"]
         occ = {e.pos for e in self.enemies}
+        sword = self.sword_wait() == 0
         for d in DORDER:
             q = add(self.player, d)
             if inb(q) and q not in self.walls and q not in occ:
                 acts.append("M" + d)
-            if inb(q) and q not in self.walls:
+            if sword and inb(q) and q not in self.walls:
                 acts.append("S" + d)
         return acts
 
@@ -277,6 +298,12 @@ EXAMPLES = {
     "E3 방패와 폭탄": dict(walls=[(3, 3), (1, 4), (5, 2)], start=(3, 6),
                        enemies=[("S", (3, 0)), ("B", (0, 1)), ("W", (6, 1))],
                        spawns=[(7, "A", (0, 5)), (10, "W", (6, 4))]),
+    # 2차: 방패병을 처음 만나는 층(폭탄병 없이)
+    "E4 등 뒤": dict(walls=[(2, 3), (4, 3), (0, 5)], start=(3, 6),
+                    enemies=[("S", (3, 1)), ("W", (6, 2))], spawns=[(6, "W", (0, 0))]),
+    "E5 협공": dict(walls=[(1, 3), (5, 3), (3, 2)], start=(3, 6),
+                   enemies=[("S", (3, 0)), ("A", (0, 1)), ("W", (6, 0))],
+                   spawns=[(5, "S", (6, 3)), (9, "W", (0, 6))]),
 }
 
 # 층별 예산: (적 수, 증원 수, 허용 종류)
@@ -362,6 +389,19 @@ def s_flee(g, rng):
     return best
 
 
+def s_turret(g, rng):
+    """제자리 포탑: 움직이지 않는다. 벨 수 있으면 가장 가까운 적 쪽으로 베고, 아니면 대기."""
+    best, bd = "W", 99
+    for a in g.legal_actions():
+        if a[0] != "S":
+            continue
+        t = add(g.player, a[1])
+        d = min((abs(t[0] - e.pos[0]) + abs(t[1] - e.pos[1]) for e in g.enemies), default=99)
+        if d < bd:
+            best, bd = a, d
+    return best
+
+
 SPIN = ["MR", "MD", "ML", "MU"]
 
 
@@ -430,32 +470,33 @@ def path_to_enemy(g):
     return 12
 
 
-def search(g, depth, base, allow_swing):
+def search(g, depth, base, allow_swing, allow_move=True):
     if depth == 0 or g.won() or g.lost():
         return evaluate(g, base), None
     best, ba = -1e9, "W"
     for a in g.legal_actions():
-        if a[0] == "S" and not allow_swing:
+        if (a[0] == "S" and not allow_swing) or (a[0] == "M" and not allow_move):
             continue
         h = g.copy()
         h.step(a)
-        v, _ = search(h, depth - 1, base, allow_swing)
+        v, _ = search(h, depth - 1, base, allow_swing, allow_move)
         if v > best:
             best, ba = v, a
     return best, ba
 
 
-def make_planner(depth, allow_swing=True):
+def make_planner(depth, allow_swing=True, allow_move=True):
+    """allow_move=False 는 "제자리에서 베기만" 하는 계획형(이동 금지)이다."""
     def s(g, rng):
         base = sum(g.kills.values())
         best, ba = -1e9, "W"
         for a in g.legal_actions():
-            if a[0] == "S" and not allow_swing:
+            if (a[0] == "S" and not allow_swing) or (a[0] == "M" and not allow_move):
                 continue
             h = g.copy()
             h.step(a)
             # 같은 결과면 진전을 먼저 하는 수를 고르도록 첫 수의 평가를 조금 더한다
-            v = search(h, depth - 1, base, allow_swing)[0] + 0.3 * evaluate(h, base) + rng.random() * 0.01
+            v = search(h, depth - 1, base, allow_swing, allow_move)[0] + 0.3 * evaluate(h, base) + rng.random() * 0.01
             if v > best:
                 best, ba = v, a
         return ba
@@ -463,20 +504,20 @@ def make_planner(depth, allow_swing=True):
 
 
 # ---------------- 실행 ----------------
-def play_floor(fl, strat, rng, delay, hp, max_turns=60):
-    g = Game(fl["walls"], fl["start"], fl["enemies"], fl["spawns"], delay=delay, hp=hp)
+def play_floor(fl, strat, rng, delay, hp, max_turns=60, sword_cd=SWORD_CD):
+    g = Game(fl["walls"], fl["start"], fl["enemies"], fl["spawns"], delay=delay, hp=hp, sword_cd=sword_cd)
     while not g.won() and not g.lost() and g.turn < max_turns:
         g.step(strat(g, rng))
     return g
 
 
-def run(strat, seed, delay=3, floors=FLOORS):
+def run(strat, seed, delay=3, floors=FLOORS, sword_cd=SWORD_CD):
     rng = random.Random(seed)
     frng = random.Random(seed * 7919)
     hp = HP_MAX
     rec = []
     for f in range(1, floors + 1):
-        g = play_floor(gen_floor(f, frng), strat, rng, delay, hp)
+        g = play_floor(gen_floor(f, frng), strat, rng, delay, hp, sword_cd=sword_cd)
         rec.append((f, g.won(), g.turn, g.dmg_taken, dict(g.kills)))
         if not g.won():
             return rec, False
@@ -484,12 +525,18 @@ def run(strat, seed, delay=3, floors=FLOORS):
     return rec, True
 
 
-def summarize(name, strat, seeds, delay=3):
+def kill_share(kills):
+    tot = max(1, sum(kills.values()))
+    return "밟기 %d%% · 베기 %d%% · 오사 %d%% · 으깨기 %d%%" % tuple(
+        round(100 * kills[k] / tot) for k in ("stomp", "swing", "friendly", "crush"))
+
+
+def summarize(name, strat, seeds, delay=3, sword_cd=SWORD_CD):
     wins, reached, per_floor_dmg, per_floor_turn, kills = 0, [], {}, {}, {"stomp": 0, "swing": 0, "friendly": 0, "crush": 0}
     fail_floor = {}
     cause = [0, 0]  # [턴 제한, 체력 0]
     for s in seeds:
-        rec, w = run(strat, s, delay)
+        rec, w = run(strat, s, delay, sword_cd=sword_cd)
         wins += w
         cleared = sum(1 for r in rec if r[1])
         reached.append(cleared)
@@ -503,32 +550,51 @@ def summarize(name, strat, seeds, delay=3):
             for kk in kills:
                 kills[kk] += k[kk]
     n = len(seeds)
-    print(f"[{name}] delay={delay} runs={n}  8층 클리어 {wins}/{n} ({100*wins/n:.0f}%)  평균 클리어 층 {sum(reached)/n:.2f}  패배원인 턴제한 {cause[0]} / 체력0 {cause[1]}")
+    print(f"[{name}] runs={n}  8층 클리어 {wins}/{n} ({100*wins/n:.0f}%)  평균 클리어 층 {sum(reached)/n:.2f}  "
+          f"패배원인 턴제한 {cause[0]} / 체력0 {cause[1]}  처치 {kill_share(kills)}")
     return dict(wins=wins / n, reached=sum(reached) / n, dmg=per_floor_dmg, turns=per_floor_turn, kills=kills, fail=fail_floor)
 
 
+FIRST_BUILD_FLOORS = ["E1 첫걸음", "E2 궁수의 복도", None]   # 1차 빌드의 세 층(3층은 아래 F3)
+F3 = dict(walls=[(1, 2), (5, 2), (3, 3)], start=(3, 6), enemies=[("A", (0, 0)), ("W", (3, 0)), ("A", (6, 1))],
+          spawns=[(5, "W", (0, 3)), (9, "W", (6, 4))])
+
+
+def first_build_run(strat, sword_cd):
+    """1차 빌드의 고정 3개 층을 이어서. [(클리어?, 턴, 피해)], 처치 합계."""
+    hp, out, kills = HP_MAX, [], {"stomp": 0, "swing": 0, "friendly": 0, "crush": 0}
+    for fl in (EXAMPLES["E1 첫걸음"], EXAMPLES["E2 궁수의 복도"], F3):
+        g = play_floor(fl, strat, random.Random(1), 3, hp, sword_cd=sword_cd)
+        out.append(("클리어" if g.won() else "실패") + f" {g.turn}턴 피해 {g.dmg_taken}")
+        for k in kills:
+            kills[k] += g.kills[k]
+        if not g.won():
+            break
+        hp = min(HP_MAX, g.hp + 1)
+    return " / ".join(out) + "  처치 " + kill_share(kills)
+
+
 def main():
+    full = "--full" in sys.argv
     t0 = time.time()
-    print("== 1. 예시 층 3개: 계획형(깊이3)으로 클리어되는가 ==")
+    print("== 1. 예시 층 5개: 계획형(3수 앞)으로 클리어되는가 (칼 하나 규칙) ==")
     for name, fl in EXAMPLES.items():
         g = play_floor(fl, make_planner(3), random.Random(1), 3, HP_MAX)
         print(f"  {name}: {'클리어' if g.won() else '실패'} {g.turn}턴, 받은 피해 {g.dmg_taken}, 처치 {g.kills}")
 
-    print("\n== 2. 전략 비교 (8층 런) ==")
+    print("\n== 2. 전략 비교 (8층 런, 칼 하나 규칙) ==")
     seeds = list(range(1, 41))
     res = {}
     res["random"] = summarize("무작위", s_random, seeds)
     res["flee"] = summarize("도망만(메아리 무시)", s_flee, seeds)
     res["spin"] = summarize("2x2 맴돌기 반복", s_spin, seeds)
-    res["p1"] = summarize("1수 앞(탐욕)", make_planner(1), seeds)
+    res["turret"] = summarize("제자리 포탑(가까운 쪽 베기)", s_turret, seeds)
+    res["nm2"] = summarize("제자리 베기만, 2수 앞", make_planner(2, allow_move=False), seeds[:10])
+    res["p1"] = summarize("1수 앞(탐욕)", make_planner(1), seeds[:20])
     res["p2"] = summarize("2수 앞", make_planner(2), seeds[:20])
     res["p3"] = summarize("3수 앞(계획형)", make_planner(3), seeds[:4])
-    res["p3ns"] = summarize("3수 앞, 베기 금지", make_planner(3, allow_swing=False), seeds[:4])
 
-    print("\n== 3. 계획형 처치 출처 ==")
-    print("  ", res["p3"]["kills"])
-
-    print("\n== 4. 난이도 곡선 (2수 앞 기준, 층별 평균 피해/턴, 탈락 층) ==")
+    print("\n== 3. 난이도 곡선 (2수 앞 기준, 층별 평균 피해/턴, 탈락 층) ==")
     for f in range(1, FLOORS + 1):
         d = res["p2"]["dmg"].get(f, [])
         t = res["p2"]["turns"].get(f, [])
@@ -536,11 +602,28 @@ def main():
             print(f"  {f}층: 도달 {len(d):2d}  평균 피해 {sum(d)/len(d):.2f}  평균 턴 {sum(t)/max(1,len(t)):.1f}")
     print("  탈락 층 분포(2수 앞):", dict(sorted(res["p2"]["fail"].items())))
 
-    print("\n== 5. 메아리 지연 민감도 (2수 앞 / 1수 앞) ==")
-    for d in (2, 3, 4):
-        a = summarize(f"2수 앞 d={d}", make_planner(2), seeds[:10], delay=d)
-        b = summarize(f"1수 앞 d={d}", make_planner(1), seeds[:10], delay=d)
-        print(f"  d={d}: 계획 이득(2수-1수 평균 층) = {a['reached'] - b['reached']:+.2f}")
+    print("\n== 4. 칼 하나 규칙의 전·후 (1차 규칙 sword_cd=0 과 비교) ==")
+    print("  1차 빌드 고정 3층")
+    for cd in (0, SWORD_CD):
+        tag = "1차 규칙" if cd == 0 else "칼 하나 "
+        print(f"   [{tag}] 제자리 베기만 2수: {first_build_run(make_planner(2, allow_move=False), cd)}")
+        print(f"   [{tag}] 3수 앞          : {first_build_run(make_planner(3), cd)}")
+    print("  무작위 8층 런 (1차 규칙)")
+    old = {}
+    old["nm2"] = summarize("1차 규칙 · 제자리 베기만, 2수 앞", make_planner(2, allow_move=False), seeds[:10], sword_cd=0)
+    old["p1"] = summarize("1차 규칙 · 1수 앞", make_planner(1), seeds[:20], sword_cd=0)
+    old["p2"] = summarize("1차 규칙 · 2수 앞", make_planner(2), seeds[:10], sword_cd=0)
+    p2new = summarize("칼 하나 · 2수 앞(같은 10런)", make_planner(2), seeds[:10])
+    print(f"  제자리 베기만: 평균 {old['nm2']['reached']:.2f}층 → {res['nm2']['reached']:.2f}층")
+    print(f"  계획 이득(2수-1수 평균 층, 2수는 같은 10런): {old['p2']['reached'] - old['p1']['reached']:+.2f} → {p2new['reached'] - res['p1']['reached']:+.2f}")
+
+    if full:
+        print("\n== 5. (--full) 베기 금지 봇, 메아리 지연 민감도 ==")
+        summarize("3수 앞, 베기 금지", make_planner(3, allow_swing=False), seeds[:4])
+        for d in (2, 3, 4):
+            a = summarize(f"2수 앞 d={d}", make_planner(2), seeds[:10], delay=d)
+            b = summarize(f"1수 앞 d={d}", make_planner(1), seeds[:10], delay=d)
+            print(f"  d={d}: 계획 이득(2수-1수 평균 층) = {a['reached'] - b['reached']:+.2f}")
 
     print(f"\n소요 {time.time() - t0:.0f}s")
     return 0
