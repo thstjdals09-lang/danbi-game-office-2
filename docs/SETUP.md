@@ -20,7 +20,7 @@
 
 ## 3. 부서 예약 작업
 
-`prompts/`의 네 프롬프트에서 `iqeqcnetdsusqkkxvver`를 실제 프로젝트 ref로 바꾸고 예약 작업으로 등록한다.
+`prompts/`의 네 프롬프트를 예약 작업으로 등록한다. Supabase 프로젝트 ref(`iqeqcnetdsusqkkxvver`)는 이미 들어 있다.
 
 | 부서 | 파일 | 권장 주기 | 필요한 연결 |
 | --- | --- | --- | --- |
