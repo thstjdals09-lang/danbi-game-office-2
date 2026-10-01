@@ -25,6 +25,9 @@
   - success → ci_passed = true
   - failure → ci_passed = false (Actions 로그에서 실패 이유를 찾아 notes에 적는다)
   - 아직 없음/pending → 판정하지 않는다. release('<game_id>', '<owner>', 'CI 대기') 후 run_finish(..., 'noop', 'CI 대기')
+  - CI 는 push 된 맨 끝 커밋에만 돈다. 빌드 커밋 뒤에 다른 커밋이 함께 올라가 빌드 커밋에 상태가 없으면,
+    그 뒤 커밋 중 상태가 있는 가장 가까운 것을 본다. 단 git diff <빌드 sha> <그 sha> -- games/<slug> 가 비어 있어야 한다
+    (게임 폴더가 그 사이에 바뀌지 않았어야 같은 빌드다). 어느 커밋의 상태를 봤는지 notes 에 적는다.
 - 검사 파일 무결성: git show <sha>:games/<slug>/tests/smoke.gd | sha256sum 이 tests_sha256과 같은지.
   다르면 무조건 fail("빌드실이 검사 파일을 바꿈").
 
@@ -46,7 +49,10 @@ must_work 항목마다 판정한다. ok=true 조건:
 - 스크린샷이 없으면 그 사실을 notes에 적고 코드로만 판정한다.
 - milestone 이 2 이상이면(프로덕션 빌드): 판정할 must_work 는 이번 차수 spec 의 것이다. 추가로
   이전 차수 검사(design/spec_m<k>.json 의 id)가 smoke.gd 에 남아 있고 CI 에서 통과했는지,
-  BUILD.md 의 "기존 항목 중 깨진 것"이 사실인지(이전 스크린샷과 새 스크린샷 비교) 확인한다. 기존 화면이 깨졌으면 fail.
+  BUILD.md 의 "기존 항목 중 깨진 것"이 사실인지 확인한다:
+    python3 tools/shots_diff.py games/<slug> --old <이번 차수 기획 커밋(spec_commit)> --new <빌드 sha>
+  달라진 파일을 열어, 달라진 영역이 이번 차수에 바꾸기로 한 것인지, **파일 이름이 말하는 화면이 여전히 찍혀 있는지** 본다.
+  기존 화면이 깨졌거나, 이름과 다른 화면이 찍혀 그 항목을 확인할 수 없거나, BUILD.md 의 설명이 사실과 다르면 fail.
 - not_now 에 있는 것을 만들었거나 문서에 없는 규칙·수치를 넣었으면 fail.
 
 === 3. 제출 ===
