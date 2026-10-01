@@ -85,7 +85,12 @@ jobs:
           echo "FAILED=$failed" >> "$GITHUB_ENV"
 
       - name: Add dashboard
-        run: cp index.html app.js config.js _site/
+        # Pages는 파일을 10분 캐시한다. 새 index.html이 예전 app.js를 불러오지 않게 커밋 번호를 붙인다.
+        run: |
+          cp app.js config.js _site/
+          sed -e "s|src=\"config.js\"|src=\"config.js?v=${GITHUB_SHA::7}\"|" \
+              -e "s|src=\"app.js\"|src=\"app.js?v=${GITHUB_SHA::7}\"|" index.html > _site/index.html
+          grep -o 'src="[a-z]*\.js?v=[0-9a-f]*"' _site/index.html
 
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
