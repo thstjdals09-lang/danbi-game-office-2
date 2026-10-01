@@ -5,6 +5,7 @@
 1. 리소스 import
 2. 메인 씬을 5초 동안 실행 — 스크립트 오류가 한 줄이라도 나오면 실패
 3. tests/smoke.gd 실행 — 기획서 must_work 항목 확인, 종료 코드 0이어야 통과
+4. tests/extra.gd 가 있으면 실행 — 빌드실이 덧붙인 검사(같은 규칙: "SMOKE PASS" 출력, 종료 코드 0)
 
 CI(.github/workflows/ci.yml)와 Builder/QA가 같은 명령을 쓴다.
 """
@@ -57,14 +58,17 @@ def main():
         failed.append("메인 씬 실행 중 오류")
         print("\n".join(errors[:20]))
 
-    test = os.path.join(game, "tests", "smoke.gd")
-    if not os.path.exists(test):
-        failed.append("tests/smoke.gd 없음")
-    else:
-        code, out = run(godot, game, ["--script", "res://tests/smoke.gd"], 120)
+    # smoke.gd: 기획실이 쓴 검사(필수). extra.gd: 빌드실이 덧붙인 검사(있으면 실행).
+    for name, required in (("smoke.gd", True), ("extra.gd", False)):
+        test = os.path.join(game, "tests", name)
+        if not os.path.exists(test):
+            if required:
+                failed.append(f"tests/{name} 없음")
+            continue
+        code, out = run(godot, game, ["--script", f"res://tests/{name}"], 300)
         print(out.strip())
         if code != 0 or ERROR_PATTERNS.search(out) or "SMOKE PASS" not in out:
-            failed.append("tests/smoke.gd 실패")
+            failed.append(f"tests/{name} 실패")
 
     name = os.path.basename(game)
     if failed:

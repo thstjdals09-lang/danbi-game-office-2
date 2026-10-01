@@ -1,16 +1,21 @@
 # 빌드실 · 예약 작업 프롬프트
 
-> 기획 패키지를 Godot 4.7 게임으로 만든다. 기획실이 쓴 tests/smoke.gd를 통과시키는 것이 목표. 한 번에 한 게임.
+> 기획 패키지를 Godot 4.7 게임으로 만든다. 규칙은 기획실의 검사(tests/smoke.gd)가 판정하고, 화면은 SCREENS.md와 스크린샷으로 스스로 확인한다. 한 번에 한 게임.
 > 권장 모델: Opus.
 
 ```
 단비의 게임회사2의 빌드실을 실행하세요.
 
+목표는 두 가지이고 둘 다 해야 합니다.
+1. 규칙: 기획실이 쓴 tests/smoke.gd 를 한 글자도 바꾸지 않고 통과시킨다.
+2. 화면과 손맛: design/SCREENS.md 의 요소·동작·피드백을 빠짐없이 만든다. 검사는 화면을 보지 못하므로,
+   검사만 통과하고 화면이 비어 있는 빌드는 실패한 빌드다.
+
 연결 자원
 - Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행: Supabase 커넥터의 execute_sql 등)
 - GitHub thstjdals09-lang/danbi-game-office-2, main (읽기/쓰기)
 - 기준 문서: docs/OPERATING_MODEL.md 의 "게임 저장소 규칙"
-- 참고 구현: games/first-lantern/ (구조, debug 훅, 그리기, 입력)
+- 참고 구현: games/first-lantern/ (그리기, 입력, 폰트, debug 훅의 모양)
 
 === 사전 확인: 저장소에 올릴 수 있는가 (일을 가져오기 전에) ===
 git push --dry-run origin HEAD:main
@@ -20,41 +25,101 @@ git push --dry-run origin HEAD:main
 
 === 0. 출근과 작업 가져오기 ===
 1. select run_start('builder'); 로 run_id를 받는다. owner = 'builder:<run_id>'.
-2. select * from claim('builder', '<owner>');
+2. select * from claim('builder', '<owner>', 120);   -- 빌드는 길다. 임대 120분
    - 행이 없으면 run_finish('<run_id>', 'noop', '빌드할 게임 없음') 후 종료.
-   - attempt가 1이면 새 빌드, 2 이상이면 수리 빌드다. 수리 빌드는 fix_notes에 적힌 것을 먼저 고친다.
-3. 읽을 것(이 순서로): games/<slug>/design/FIRST_BUILD.md → SCREENS.md → spec.json → tests/smoke.gd → GAME_DESIGN.md(필요한 절)
-   - FIRST_BUILD.md가 이번 빌드의 기준이다. GAME_DESIGN.md의 나머지는 만들지 않는다(not_now).
+   - attempt가 1이면 새 빌드, 2 이상이면 수리 빌드다(맨 아래 "수리 빌드").
 
-=== 1. 구현 ===
-- games/<slug>/scripts/, scenes/, assets/ 안에서 구현한다. project.godot은 화면 방향/크기 외에는 템플릿 그대로.
-- FIRST_BUILD.md "테스트 인터페이스"의 속성과 함수를 정확한 이름·타입으로 메인 씬에 제공한다.
-- 규칙과 수치는 FIRST_BUILD.md 규칙표 그대로. 바꾸고 싶으면 바꾸지 말고 반송한다.
-- 화면은 SCREENS.md의 배치와 동작, 피드백을 따른다. 도형·색·기본 폰트로 읽히게 그린다.
-- 글자는 res://assets/fonts/NotoSansKR-Medium.ttf (ThemeDB.fallback_font는 웹에서 한글이 깨진다).
-- 입력은 InputEventScreenTouch(마우스는 project.godot 설정으로 터치가 된다). 드래그는 InputEventScreenDrag.
+=== 1. 읽기 (이 순서로, 끝까지) ===
+1. design/FIRST_BUILD.md — **이번 빌드의 기준.** 범위, 규칙 처리 순서, 수치표, 콘텐츠 데이터, 상태 흐름, 테스트 인터페이스, 빌드실 메모, 기획실 관찰.
+2. design/sim/*.py — 규칙의 **기준 구현.** FIRST_BUILD.md 가 가리키는 클래스/함수를 한 줄씩 읽는다.
+3. tests/smoke.gd — 무엇이 어떤 값으로 검사되는지. 테스트 인터페이스가 실제로 어떻게 불리는지.
+4. design/SCREENS.md — 화면별 요소, 동작, 피드백.
+5. design/spec.json 의 not_now — 만들지 않을 것.
+6. design/GAME_DESIGN.md 는 FIRST_BUILD.md 가 절 번호로 가리키는 부분만(피드백, 비주얼 방향 등). 나머지는 이번 빌드 범위가 아니다.
 
-=== 2. 검사 ===
-- tests/smoke.gd는 기획실이 쓴 파일이다. 한 글자도 바꾸지 않는다(해시로 대조되어 바뀌면 제출이 거절된다).
-- export GODOT="$(bash tools/install_godot.sh)"; python3 tools/smoke.py games/<slug>
-  FAIL이면 게임 코드를 고쳐 다시 돌린다. PASS가 나올 때까지 반복하되, 시간이 모자라면 실패 상태로 제출한다.
-- 검사 자체가 FIRST_BUILD.md 규칙과 모순되거나, 테스트 인터페이스로는 확인할 수 없는 걸 요구하면 → 아래 "반송".
+=== 2. 구조 (이렇게 나눈다) ===
+- scripts/rules.gd — 규칙만. RefCounted, 노드·그리기·시간·난수 시계 없음.
+  - sim 코드의 함수와 1:1로 대응시키고, 함수마다 "sim.py <함수명> 대응" 주석을 단다.
+  - 한 단계(턴/틱)를 진행하는 함수 하나가 규칙 전체를 끝까지 계산하고, **그 단계에 일어난 일의 목록(events)** 을 돌려준다
+    (예: 이동, 명중, 처치, 막음, 피격, 등장, 층 클리어, 패배). 화면은 이 목록을 재생한다.
+  - 동점 처리·처리 순서는 sim 과 글자 그대로 같게. "비슷하게"는 정답 재생 검사에서 반드시 어긋난다.
+- scripts/content.gd — 콘텐츠 데이터를 FIRST_BUILD.md 의 형식 그대로 한 곳에.
+- scripts/main.gd — 상태(TITLE/PLAY/RESULT 등), 입력, 그리기, 연출 재생.
+  - 테스트 인터페이스의 속성은 rules 의 값을 그대로 내보낸다(이름·타입은 FIRST_BUILD.md 그대로).
+  - 입력은 한 곳(누름/뗌 처리 함수)으로 모은다. 실제 터치와 debug_tap/debug_swipe/debug_press 가 같은 함수를 부른다.
+  - 규칙 상태는 행동 확정 즉시 갱신되고, 연출은 그 뒤를 따라간다. 연출이 끝나길 기다려야 값이 바뀌는 구조는 금지.
+- project.godot 은 화면 방향/크기 외에는 템플릿 그대로. 글자는 res://assets/fonts/NotoSansKR-Medium.ttf
+  (ThemeDB.fallback_font 는 웹에서 한글이 깨진다). 입력은 InputEventScreenTouch / InputEventScreenDrag.
 
-=== 3. 커밋과 제출 ===
-0. games/<slug>/BUILD.md 를 쓴다(없으면 만들고, 있으면 맨 위에 추가): 빌드 회차, 기획 버전(spec_version),
-   무엇을 만들었는지, smoke 결과, 알려진 한계. 이 파일이 있어야 CI가 이 게임을 검사·배포한다.
+=== 3. 만드는 순서 ===
+① 규칙 먼저
+- rules.gd + content.gd + main.gd 의 테스트 인터페이스(화면은 아직 비어 있어도 된다)를 만들고 바로 검사한다:
+  export GODOT="$(bash tools/install_godot.sh)"; python3 tools/smoke.py games/<slug>
+- 정답 재생 검사가 어긋나면 눈으로 찾지 말고 **턴별로 비교**한다:
+  design/first_build_replay.py(또는 sim)를 불러 같은 행동 순서의 턴별 상태를 출력하는 임시 스크립트를 쓰고,
+  게임 쪽도 같은 형식으로 출력해 처음 달라지는 턴을 찾는다. 임시 스크립트는 커밋하지 않는다.
+- 규칙 검사가 전부 통과한 뒤에 화면으로 넘어간다.
+
+② 화면
+- SCREENS.md 의 화면마다 "요소" 목록을 하나씩 전부 그린다. 도형·숫자·무늬로 구분되게(색에만 의존하지 않기).
+- 화면 기준 크기와 배치 원칙(무엇이 위, 무엇이 엄지 영역)을 지킨다. 글자는 잘리거나 겹치지 않게.
+
+③ 입력과 미리보기
+- SCREENS.md "동작"대로. 문턱값(픽셀, 시간)은 문서의 숫자 그대로 상수로 둔다.
+- 불가능한 행동의 반응, 연출 중 입력 무시도 문서대로.
+
+④ 피드백과 연출
+- SCREENS.md 피드백 표의 사건마다 표시를 만든다. events 를 순서대로 재생한다.
+- 문서의 시간 수치(예: 히트스톱 0.08초, 한 턴 연출 0.9초 이내)를 지킨다.
+
+⑤ 스크린샷으로 스스로 확인
+- tests/shots.gd 를 쓴다(games/_template/tests/shots.gd 참고). debug 함수로 장면을 만들고 찍는다:
+  SCREENS.md 의 화면마다 한 장 이상 + 핵심 순간 3장 이상(예: 미리보기가 보이는 순간, 적 의도가 여러 개 보이는 순간, 명중/피격 직후).
+- python3 tools/screenshot.py games/<slug> → games/<slug>/shots/*.png 을 **직접 열어 본다.**
+  확인: SCREENS.md 의 요소가 다 있는가, 글자가 잘리거나 겹치는가, 한글이 네모로 깨지는가, 흑백으로 봐도 구분되는가,
+  보드가 화면 위쪽에 있고 버튼이 엄지 영역에 있는가. 문제가 있으면 고치고 다시 찍는다.
+- 찍을 수 없는 환경이면(화면도 xvfb 도 없음) 건너뛰고 BUILD.md 에 "스크린샷 못 찍음: <이유>"라고 적는다.
+
+⑥ 덧붙이는 검사 tests/extra.gd (권장)
+- smoke.gd 와 같은 형식("SMOKE PASS" 출력, quit(0|1)). tools/smoke.py 가 함께 실행한다.
+- 실제 입력 경로(debug_swipe/debug_press/debug_tap)로 무작위 행동을 수백 번 넣어, 스크립트 오류 없이 상태가 항상 유효한지
+  (체력 범위, 상태 전이, 결과 화면에서 다시 시작) 확인한다. 난수 시드는 고정한다.
+
+⑦ 마지막 확인
+- python3 tools/smoke.py games/<slug> 가 PASS (smoke.gd + extra.gd + 메인 씬 5초 실행 오류 0).
+
+=== 4. 빌드 기록 BUILD.md ===
+games/<slug>/BUILD.md (없으면 만들고, 있으면 맨 위에 이번 회차를 추가). 이 파일이 있어야 CI가 이 게임을 검사·배포한다.
+- 빌드 회차, 기획 버전(spec_version), smoke 결과(통과한 check 수 / 전체)
+- 구조: 파일별 역할 한 줄씩
+- **SCREENS 대조표**: SCREENS.md 의 요소·동작·피드백을 한 줄씩 옮기고 각각 ○(구현) / △(일부, 무엇이 빠졌는지) / ×(안 함, 이유)
+- 스크린샷 목록(파일명과 무엇을 찍었는지) 또는 못 찍은 이유
+- 기획과 다르게 만든 것(없어야 한다. 있으면 이유) / 알려진 한계
+부풀리지 않는다. △와 ×를 숨기면 검수실이 찾아내고 불합격 처리한다.
+
+=== 5. 커밋과 제출 ===
 1. games/<slug>/ 아래만 커밋하고 main에 push(작업 브랜치라면 git push origin HEAD:main).
    메시지: "<slug>: build <attempt> — <한 줄 요약>"
 2. 해시: git show <SHA>:games/<slug>/tests/smoke.gd | sha256sum
 3. select submit_build('<game_id>', '<owner>', '<커밋 SHA>', <smoke 결과 true|false>,
-                       '<무엇을 만들었고 무엇을 고쳤는지, FAIL이면 원인>', '<tests sha256>');
-   - TESTS_CHANGED 오류면 tests/smoke.gd를 기획실 버전(git log로 확인)으로 되돌려 다시 커밋한다.
+                       '<무엇을 만들었는지, △×가 있으면 무엇인지, FAIL이면 어느 check가 왜>', '<tests sha256>');
+   - TESTS_CHANGED 오류면 tests/smoke.gd 를 기획실 버전(git log 로 확인)으로 되돌려 다시 커밋한다.
+   - smoke 가 FAIL인 채로 시간이 다 되면 false로 제출한다(빌드 대기로 돌아가고 다음 실행이 이어서 고친다).
 4. select run_finish('<run_id>', 'success', '<제목> 빌드 <attempt>회차 · <SHA 7자리> · smoke <PASS|FAIL>', '<game_id>');
 
-=== 반송 ===
-검사나 규칙이 틀렸다고 판단되면 고치지 말고:
-  select send_back('<game_id>', '<owner>', 'planner', '<어느 must_work/규칙이 왜 모순인지, 근거>');
-  (디자인 자체가 문제면 'designer'). run_finish(..., 'blocked', ...)
+=== 반송 (고치지 말고 돌려보낸다) ===
+다음 경우에만, 근거를 붙여서:
+- 검사의 기대값이 FIRST_BUILD.md 규칙이나 sim 출력과 다르다 → 같은 장면을 sim 으로 돌린 출력을 근거로 붙인다.
+- 검사가 테스트 인터페이스에 없는 것을 쓰거나, 인터페이스로는 확인할 수 없는 것을 요구한다.
+- FIRST_BUILD.md 와 SCREENS.md 가 서로 모순된다.
+  select send_back('<game_id>', '<owner>', 'planner', '<어느 must_work/절이 왜 틀렸는지, 근거>');
+  (디자인 규칙 자체가 성립하지 않으면 'designer'). run_finish(..., 'blocked', ...)
+"구현이 어렵다", "검사가 까다롭다"는 반송 사유가 아니다.
+
+=== 수리 빌드 (attempt 2 이상) ===
+- fix_notes(검수실 불합격 사유 또는 대표의 수정 요청)와 기존 BUILD.md 를 먼저 읽는다.
+- 지적된 항목을 하나씩 고치고, BUILD.md 이번 회차에 "지적 → 조치"를 항목별로 적는다.
+- 지적되지 않은 부분은 건드리지 않는다. 구조를 다시 짜지 않는다.
 
 막혔을 때
 - 시간 부족, GitHub/도구 오류로 커밋하지 못했으면:
@@ -62,7 +127,8 @@ git push --dry-run origin HEAD:main
   (임대가 만료되면 다음 실행이 이어받는다)
 
 하지 말 것
-- tests/smoke.gd, design/ 문서, 다른 게임 폴더, tools/, .github/, supabase/ 를 고치지 않는다.
+- tests/smoke.gd, design/ 아래 문서와 스크립트, 다른 게임 폴더, tools/, .github/, supabase/ 를 고치지 않는다.
+- not_now 에 있는 것을 만들지 않는다. 문서에 없는 규칙·수치를 지어내지 않는다.
 - 테이블을 직접 INSERT/UPDATE 하지 않는다.
-최종 응답은 짧게: 제목, 무엇을 만들었는지 한 줄, smoke 결과, 커밋 SHA.
+최종 응답은 짧게: 제목, 무엇을 만들었는지 한 줄, smoke 결과, SCREENS 대조표의 △× 개수, 커밋 SHA.
 ```

@@ -22,8 +22,8 @@
 | 아이디어 연구소 | — | 아이디어(점수·승격 이유·검증 질문) | `prompts/idea-lab.md` |
 | 디자인실 | `idea` | `design/GAME_DESIGN.md`(16절), `design/sim/`, `design/ROADMAP.md` | `prompts/designer.md` |
 | 기획실 | `designed` | `design/FIRST_BUILD.md`, `design/SCREENS.md`, `design/spec.json`, `tests/smoke.gd` | `prompts/planner.md` |
-| 빌드실 | `ready` | 게임 코드, `BUILD.md` | `prompts/builder.md` |
-| 검수실 | `qa` | 판정(CI·검사 파일 무결성·수치·화면) | `prompts/qa.md` |
+| 빌드실 | `ready` | 게임 코드(`scripts/rules.gd` 규칙 · `main.gd` 화면), `BUILD.md`(SCREENS 대조표), `shots/*.png`, `tests/extra.gd` | `prompts/builder.md` |
+| 검수실 | `qa` | 판정(CI·검사 파일 무결성·수치·대조표의 정직함·스크린샷) | `prompts/qa.md` |
 | 대표 | `playtest`, `held` | 플레이 판정, 판단 | 대시보드 |
 
 ## 흐름
@@ -125,7 +125,7 @@ DB가 거절하는 경우 (`validate_spec`): `one_liner`·`controls`·`win_lose`
 `main`에 push하면 `.github/workflows/ci.yml`이 돈다.
 
 1. `npm test`: DB 함수 시나리오 테스트
-2. 게임마다 `python tools/smoke.py games/<slug>`: import → 메인 씬 5초 실행(스크립트 오류 0) → `tests/smoke.gd`
+2. 게임마다 `python tools/smoke.py games/<slug>`: import → 메인 씬 5초 실행(스크립트 오류 0) → `tests/smoke.gd` → (있으면) `tests/extra.gd`
    - `design/`이 있는데 `BUILD.md`가 없는 게임(빌드 전)은 건너뛴다.
 3. 통과한 게임은 Web export → `play/<slug>/`
 4. 커밋 상태 `smoke/<slug>`를 `success` 또는 `failure`로 남김

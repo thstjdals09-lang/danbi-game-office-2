@@ -217,7 +217,8 @@
     { id: "roadmap", label: "로드맵", file: "design/ROADMAP.md" },
     { id: "first", label: "첫 빌드 기획", file: "design/FIRST_BUILD.md" },
     { id: "screens", label: "화면", file: "design/SCREENS.md" },
-    { id: "build", label: "빌드 기록", file: "BUILD.md" }
+    { id: "build", label: "빌드 기록", file: "BUILD.md" },
+    { id: "shots", label: "스크린샷", dir: "shots" }
   ];
   var docState = { game: null, tab: "design" };
 
@@ -250,8 +251,9 @@
     $("docTabs").innerHTML = DOCS.map(function (d) {
       return '<button class="tab" type="button" data-doctab="' + d.id + '" aria-selected="' + (d.id === tab) + '">' + esc(d.label) + "</button>";
     }).join("");
-    $("docGithub").href = "https://github.com/" + CFG.repo + "/blob/main/games/" + encodeURIComponent(g.slug) + "/" + doc.file;
+    $("docGithub").href = "https://github.com/" + CFG.repo + "/" + (doc.dir ? "tree" : "blob") + "/main/games/" + encodeURIComponent(g.slug) + "/" + (doc.dir || doc.file);
     $("docBody").innerHTML = '<div class="empty">불러오는 중…</div>';
+    if (doc.dir) { showShots(g, doc, tab); return; }
     try {
       var r = await fetch(rawUrl(g, doc.file), { cache: "no-store" });
       if (docState.game !== g || docState.tab !== tab) return;
@@ -263,6 +265,22 @@
       $("docBody").scrollTop = 0;
     } catch (e) {
       $("docBody").innerHTML = '<div class="empty">문서를 불러오지 못했어요: ' + esc(e.message || e) + "</div>";
+    }
+  }
+
+  async function showShots(g, doc, tab) {
+    try {
+      var r = await fetch("https://api.github.com/repos/" + CFG.repo + "/contents/games/" + encodeURIComponent(g.slug) + "/" + doc.dir + "?ref=main");
+      if (docState.game !== g || docState.tab !== tab) return;
+      if (r.status === 404) { $("docBody").innerHTML = '<div class="empty">아직 스크린샷이 없어요. 빌드실이 빌드하면서 찍어요.</div>'; return; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      var files = (await r.json()).filter(function (f) { return /\.png$/i.test(f.name); });
+      if (!files.length) { $("docBody").innerHTML = '<div class="empty">아직 스크린샷이 없어요.</div>'; return; }
+      $("docBody").innerHTML = '<div class="shots">' + files.map(function (f) {
+        return '<figure><img loading="lazy" alt="' + esc(f.name) + '" src="' + esc(rawUrl(g, doc.dir + "/" + f.name)) + '"><figcaption>' + esc(f.name.replace(/\.png$/i, "")) + "</figcaption></figure>";
+      }).join("") + "</div>";
+    } catch (e) {
+      $("docBody").innerHTML = '<div class="empty">스크린샷을 불러오지 못했어요: ' + esc(e.message || e) + "</div>";
     }
   }
 
