@@ -13,7 +13,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 OWNER = "danbi-game-office-2"
 
 # 파일 이름, 부서 이름, 언제 부르는지(슬래시 명령 목록에 보이는 한 줄)
