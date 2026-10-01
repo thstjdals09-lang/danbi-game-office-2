@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "dgo2-designer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "단비의 게임회사2 디자인실: 아이디어 하나를 가져와 깊이 있는 게임 디자인과 규칙 시뮬레이션을 만든다.",
   "author": {
     "name": "danbi-game-office-2"
