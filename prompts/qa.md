@@ -46,6 +46,8 @@ must_work 항목마다 판정한다. ok=true 조건:
 - 대조표에서 ○라고 한 항목을 5개 이상 골라 코드에서 실제로 그리는지 확인한다. ○인데 없으면 fail("대조표가 사실과 다름").
 - games/<slug>/shots/*.png 가 있으면 열어 본다(git show <sha>:games/<slug>/shots/<파일> > /tmp/x.png 후 이미지 읽기).
   SCREENS.md 요소가 보이는가, 글자가 잘리거나 겹치는가, 한글이 깨지는가, 배치 원칙(보드 위쪽, 버튼 엄지 영역 등)을 지켰는가.
+  **파일마다 이름·BUILD.md 의 설명과 실제 화면이 같은지 본다**(1차 빌드도 마찬가지다). 이름과 다른 화면이 찍혀 그 항목을
+  확인할 수 없거나, BUILD.md 가 "전부 열어 봤다"고 적었는데 그렇지 않은 것이 드러나면 fail. 많으면 python3 tools/shots_sheet.py games/<slug>.
 - 스크린샷이 없으면 그 사실을 notes에 적고 코드로만 판정한다.
 - milestone 이 2 이상이면(프로덕션 빌드): 판정할 must_work 는 이번 차수 spec 의 것이다. 추가로
   이전 차수 검사(design/spec_m<k>.json 의 id)가 smoke.gd 에 남아 있고 CI 에서 통과했는지,
