@@ -279,16 +279,9 @@
         '><span class="n num">' + t.n + '</span><span class="l">' + esc(t.l) + '</span><span class="h">' + esc(t.h) + "</span></button>";
     }).join("");
 
-    $("playtest").innerHTML = play.length ? play.map(function (g) {
-      return '<article class="card attn"><div class="card-title">' + esc(g.title) + '<span class="mono">' + esc(versionText(g)) + "</span></div>" +
-        '<div class="p">' + esc(g.pitch) + "</div>" +
-        '<div class="acts"><button class="btn go" type="button" data-play="' + g.id + '">▶ 플레이</button>' +
-        '<button class="btn" type="button" data-game="' + esc(g.slug) + '">' + (g.art ? "아트 방향 보기" : "게임 열기") + "</button>" + docButton(g) + "</div>" +
-        '<div class="acts"><button class="btn" type="button" data-pt="keep" data-id="' + g.id + '"' + dis() + ">합격</button>" +
-        '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis() + ">고쳐서 다시</button>" +
-        '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis() + ">버리기</button>" +
-        '<button class="btn ghost" type="button" data-finish="' + g.id + '"' + dis() + ">여기까지</button></div></article>";
-    }).join("") : '<div class="empty">플레이할 게임이 없어요. 검수를 통과하면 여기에 와요.</div>';
+    // 플레이테스트: 라이브러리와 같은 카드. 눌러서 게임 상세에서 플레이하고 판정한다
+    $("playtest").innerHTML = play.length ? play.map(gameCard).join("")
+      : '<div class="empty" style="grid-column:1/-1">플레이할 게임이 없어요. 검수를 통과하면 여기에 와요.</div>';
 
     $("askSec").hidden = !asks.length;
     // 같은 게임의 요청끼리 붙여서, 오래된 것부터
@@ -362,13 +355,16 @@
       .sort(function (a, b) { return order.indexOf(a.stage) - order.indexOf(b.stage) || new Date(b.stage_changed_at) - new Date(a.stage_changed_at); });
     if (!games.length) { $("games").innerHTML = '<div class="empty" style="grid-column:1/-1">여기에 해당하는 게임이 없어요.</div>'; return; }
 
-    $("games").innerHTML = games.map(function (g) {
-      var thumb = thumbOf(g);
-      return '<button class="gcard" type="button" data-game="' + esc(g.slug) + '"><span class="thumb">' +
-        (thumb ? '<img loading="lazy" alt="" src="' + esc(thumb) + '">' : '<span class="ph">' + (WIP_STAGES.indexOf(g.stage) >= 0 ? "제작 중 · 아트 전" : "아트 방향 준비 전") + "</span>") +
-        '</span><span class="body"><span class="row">' + stageChip(g) + (canPlay(g) ? '<span class="playable">▶ 플레이 가능</span>' : "") + "</span>" +
-        '<span class="t">' + esc(g.title) + '</span><span class="d">' + esc(g.pitch) + '</span><span class="open">게임 열기 ↗</span></span></button>';
-    }).join("");
+    $("games").innerHTML = games.map(gameCard).join("");
+  }
+
+  // 게임 카드(라이브러리와 결재함의 플레이테스트가 같이 쓴다). 누르면 게임 상세로 간다.
+  function gameCard(g) {
+    var thumb = thumbOf(g);
+    return '<button class="gcard" type="button" data-game="' + esc(g.slug) + '"><span class="thumb">' +
+      (thumb ? '<img loading="lazy" alt="" src="' + esc(thumb) + '">' : '<span class="ph">' + (WIP_STAGES.indexOf(g.stage) >= 0 ? "제작 중 · 아트 전" : "아트 방향 준비 전") + "</span>") +
+      '</span><span class="body"><span class="row"><span class="chips">' + stageChip(g) + "</span>" + (canPlay(g) ? '<span class="playable">▶ 플레이 가능</span>' : "") + "</span>" +
+      '<span class="t">' + esc(g.title) + '</span><span class="d">' + esc(g.pitch) + '</span><span class="open">게임 열기 ↗</span></span></button>';
   }
 
   function renderGameDetail(g) {

@@ -191,6 +191,7 @@
   .gcard .thumb .ph { font-size: 13px; color: var(--dim); padding: 12px; text-align: center; }
   .gcard .body { padding: 12px 14px 14px; display: grid; gap: 6px; align-content: start; }
   .gcard .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .gcard .chips { flex-wrap: nowrap; min-width: 0; }
   .gcard .playable { font-size: 11px; color: var(--green); white-space: nowrap; }
   .gcard .t { font-size: 15px; font-weight: 700; }
   .gcard .d { font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -310,8 +311,8 @@
   <section class="view" id="view-home">
     <div class="tiles" id="tiles"></div>
     <div class="sec">
-      <div class="sec-head"><h2>플레이테스트</h2><span>직접 해 보고 판정해 주세요</span></div>
-      <div class="list" id="playtest"></div>
+      <div class="sec-head"><h2>플레이테스트</h2><span>게임을 눌러 플레이하고 판정해 주세요</span></div>
+      <div class="lib" id="playtest"></div>
     </div>
     <div class="sec" id="askSec" hidden>
       <div class="sec-head"><h2>결정 요청</h2><span id="askSide"></span></div>
