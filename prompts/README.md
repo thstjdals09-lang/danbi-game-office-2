@@ -99,6 +99,9 @@ https://claude.ai/code/routines 에서 켜고 끄거나 "지금 실행"을 누�
 | 빌드실 | `trig_01HB4nkgg16z34p55tSBdkjN` | `20 * * * *` |
 | 검수실 | `trig_019oUgGemyM5UgDWEurez6Sw` | `40 * * * *` |
 | 아트실 | `trig_01HRhmRQLHMhQQX1uEF6CQyd` | `30 */2 * * *` |
+| 프로덕션 디자인실 | `trig_01AaudpyX7UfqDjYxDHw95Pv` | `15 */2 * * *` |
+| 프로덕션 기획실 | `trig_01NAHX74Y3BLT4JA4APNRnSs` | `50 * * * *` |
+| 프로덕션 개발실 | `trig_016Ecbasga8qssmbxLpFK15E` | `25 * * * *` |
 | (확인용) push 권한 확인 | `trig_0187yZGdpskodk8v868ZWwCG` | 수동 실행 전용 |
 
 ChatGPT 예약 작업 등 다른 곳에 등록할 때도 같은 실행 문구를 쓰면 된다. 필요한 것은 Supabase SQL 실행과 저장소 읽기/쓰기 두 가지다.
