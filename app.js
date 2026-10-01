@@ -7,12 +7,15 @@
 
   var ROLES = [
     { id: "idea_lab", name: "아이디어 연구소" },
+    { id: "designer", name: "디자인실" },
     { id: "planner", name: "기획실" },
     { id: "builder", name: "빌드실" },
     { id: "qa", name: "검수실" }
   ];
   var STATIONS = [
-    { stage: "idea", who: "기획실", nm: "아이디어 대기" },
+    { stage: "idea", who: "디자인실", nm: "디자인 대기" },
+    { stage: "designing", who: "디자인실", nm: "디자인 중" },
+    { stage: "designed", who: "기획실", nm: "기획 대기" },
     { stage: "planning", who: "기획실", nm: "기획 중" },
     { stage: "ready", who: "빌드실", nm: "빌드 대기" },
     { stage: "building", who: "빌드실", nm: "빌드 중" },
@@ -79,7 +82,7 @@
     try {
       if (LIVE) {
         var r = await Promise.all([
-          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
+          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,design_summary,sim_status,design_version,spec_version,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
           sb.from("runs").select("*").order("started_at", { ascending: false }).limit(200),
           sb.from("events").select("*").order("id", { ascending: false }).limit(30),
           sb.from("builds").select("game_id,attempt,commit_sha,smoke_passed,created_at").order("created_at", { ascending: false }).limit(500),
@@ -181,20 +184,27 @@
       var b = latestBuild(g.id);
       if (b) meta += '<span class="chip mono">' + esc(b.commit_sha.slice(0, 7)) + "</span>";
       var body = '<div class="p">' + esc(g.pitch) + "</div>";
+      if (g.design_summary) body += '<div class="summary">' + esc(g.design_summary) + "</div>";
       if (ui.tab === "held" && g.fix_notes) body += '<div class="note">' + esc(g.fix_notes) + "</div>";
       var acts = ui.tab === "playtest"
-        ? '<button class="btn" type="button" data-play="' + g.id + '">▶ 플레이</button>' +
+        ? '<button class="btn" type="button" data-play="' + g.id + '">▶ 플레이</button>' + docLink(g) +
           '<button class="btn go" type="button" data-pt="keep" data-id="' + g.id + '"' + dis + ">합격</button>" +
           '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis + ">고쳐서 다시</button>" +
           '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis + ">버리기</button>"
-        : '<button class="btn go" type="button" data-tri="go" data-id="' + g.id + '"' + dis + ">다시 진행</button>" +
+        : docLink(g) + '<button class="btn go" type="button" data-tri="go" data-id="' + g.id + '"' + dis + ">다시 진행</button>" +
           '<button class="btn bad" type="button" data-tri="drop" data-id="' + g.id + '"' + dis + ">버리기</button>";
       return '<div class="item' + (ui.tab === "playtest" ? " attn" : "") + '">' + head + '<div><div class="t">' + esc(g.title) +
         "</div>" + body + '<div class="meta">' + meta + '</div><div class="acts">' + acts + "</div></div></div>";
     }).join("");
   }
 
-  // 아이디어 대기: 기획실이 가져갈 순서(★ → 들어온 순)대로 보여 준다. 대표는 ★로 우선순위만 바꾼다.
+  function docLink(g) {
+    if (!g.design_version) return "";
+    return '<a class="btn ghost" target="_blank" rel="noopener" href="https://github.com/' + esc(CFG.repo) + "/tree/main/games/" +
+      encodeURIComponent(g.slug) + '/design">기획 문서</a>';
+  }
+
+  // 아이디어 대기: 디자인실이 가져갈 순서(★ → 들어온 순)대로 보여 준다. 대표는 ★로 우선순위만 바꾼다.
   function plannerOrder(a, b) {
     if (a.starred !== b.starred) return a.starred ? -1 : 1;
     return new Date(a.created_at) - new Date(b.created_at);
@@ -202,7 +212,7 @@
 
   function renderIdeas() {
     var all = byStage("idea").sort(plannerOrder);
-    $("ideaCount").textContent = all.length + "개 · 기획실이 위에서부터 가져가요";
+    $("ideaCount").textContent = all.length + "개 · 디자인실이 위에서부터 가져가요";
     var items = all;
     if (ui.query) {
       var q = ui.query.toLowerCase();

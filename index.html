@@ -49,7 +49,7 @@
   @media (max-width: 900px) { .row2 { grid-template-columns: 1fr; } }
 
   /* 출근부 */
-  .depts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }
+  .depts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }
   @media (max-width: 760px) { .depts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .dept { padding: 12px 16px; border-left: 1px solid var(--line-soft); display: grid; gap: 3px; min-width: 0; }
   .dept:first-child { border-left: 0; }
@@ -84,6 +84,8 @@
   .why { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: var(--text); }
   .why li { margin: 1px 0; }
   .next { font-size: 12px; color: var(--cyan); margin-top: 6px; }
+  .summary { font-size: 12px; color: var(--text); margin-top: 6px; white-space: pre-wrap; border-left: 2px solid var(--line); padding-left: 8px; }
+  a.btn { text-decoration: none; display: inline-block; }
   .item .note { font-size: 12px; color: var(--amber); margin-top: 6px; white-space: pre-wrap; }
   .item .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .star { background: none; border: 0; cursor: pointer; font-size: 18px; line-height: 1; color: var(--dim); padding: 2px; align-self: start; }
@@ -104,7 +106,7 @@
 
   /* 생산 라인 */
   .line-scroll { overflow-x: auto; padding-bottom: 4px; }
-  .line { display: grid; grid-template-columns: repeat(7, minmax(108px, 1fr)); gap: 14px; min-width: 820px; }
+  .line { display: grid; grid-template-columns: repeat(9, minmax(100px, 1fr)); gap: 14px; min-width: 1000px; }
   .station { position: relative; padding: 12px; border: 1px solid var(--line-soft); background: var(--panel-2); border-radius: 12px; display: grid; gap: 4px; align-content: start; }
   .station:not(:last-child)::after { content: "›"; position: absolute; right: -11px; top: 50%; transform: translateY(-50%); color: var(--dim); }
   .station .who { font-size: 10px; letter-spacing: .08em; color: var(--dim); font-weight: 700; }

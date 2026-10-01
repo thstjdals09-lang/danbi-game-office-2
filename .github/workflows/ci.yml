@@ -60,6 +60,8 @@ jobs:
           for dir in games/*/; do
             slug=$(basename "$dir")
             [ "$slug" = "_template" ] && continue
+            # 디자인/기획만 있고 아직 빌드 전(BUILD.md 없음)인 게임은 검사하지 않는다
+            if [ -d "$dir/design" ] && [ ! -f "$dir/BUILD.md" ]; then echo "$slug: 빌드 전 — 건너뜀"; continue; fi
             echo "::group::$slug"
             if python3 tools/smoke.py "$dir" --godot godot; then
               ok=true

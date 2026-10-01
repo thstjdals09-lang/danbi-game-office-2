@@ -1,70 +1,105 @@
 # 단비의 게임회사2 · 운영 규칙
 
-이 문서가 회사의 기준이다. 예약 작업 프롬프트(`prompts/`)와 DB 함수(`supabase/migrations/`)는 이 문서를 따른다.
+이 문서가 회사의 기준이다. 부서 프롬프트(`prompts/`)와 DB 함수(`supabase/migrations/`)는 이 문서를 따른다.
 
-## 1회사에서 바꾼 것
+## 원칙
+
+**기획은 깊게, 첫 빌드 범위는 좁게, 일치 여부는 실행으로 판정한다.**
 
 | 1회사 | 2회사 |
 | --- | --- |
-| 7단계 (아이디어 → 게임 설계 → 와이어프레임 → 구현 계약 → 빌드 → Gate → 플레이테스트) | 4개 부서 + 대표. 게임 설계, 와이어프레임, 구현 계약을 **한 장 기획서**로 합침 |
-| 게임당 요구사항 93~156개 | 기획서의 `must_work` **3~10개** |
-| Gate가 요구사항마다 증거 UUID를 만들어 정적 검수 | CI가 **실제로 실행해서** 검사 (`tests/smoke.gd`), 검수실은 항목별 확인 |
-| 플레이하려면 따로 Web export | 통과하면 자동으로 Web export, 대시보드에서 **바로 플레이** |
+| 게임 설계 → 와이어프레임 → 구현 계약(블루프린트) → 빌드 → Gate. 단계마다 앞 문서를 다시 써서 옮김 | 디자인실이 깊은 설계를 쓰고, 기획실은 다시 쓰지 않고 **첫 빌드 조각을 고름** |
+| 게임당 요구사항 93~156개를 한 번에 빌드·검수 | 깊은 설계는 ROADMAP으로 나눠 쌓고, 첫 빌드는 `must_work` **3~12개** |
+| Gate가 문서끼리 비교해 일치 여부를 판정 | **기획실이 검사(`tests/smoke.gd`)를 먼저 쓰고**, CI가 실제로 돌려 판정. 빌드실은 검사를 못 바꿈(해시 대조) |
+| 규칙 검증은 빌드 후 | 디자인실이 **Python 규칙 시뮬레이션**으로 Godot 전에 검증 |
+| 플레이하려면 따로 Web export | 통과하면 자동 Web export, 대시보드에서 **바로 플레이** |
 | 상태 규칙이 프롬프트와 DB에 흩어져 있음 | 상태 변경은 **DB 함수로만**. 규칙 위반은 DB가 거절 |
+
+## 부서
+
+| 부서 | 가져가는 단계 | 만드는 것 | 프롬프트 |
+| --- | --- | --- | --- |
+| 아이디어 연구소 | — | 아이디어(점수·승격 이유·검증 질문) | `prompts/idea-lab.md` |
+| 디자인실 | `idea` | `design/GAME_DESIGN.md`(16절), `design/sim/`, `design/ROADMAP.md` | `prompts/designer.md` |
+| 기획실 | `designed` | `design/FIRST_BUILD.md`, `design/SCREENS.md`, `design/spec.json`, `tests/smoke.gd` | `prompts/planner.md` |
+| 빌드실 | `ready` | 게임 코드, `BUILD.md` | `prompts/builder.md` |
+| 검수실 | `qa` | 판정(CI·검사 파일 무결성·수치·화면) | `prompts/qa.md` |
+| 대표 | `playtest`, `held` | 플레이 판정, 판단 | 대시보드 |
 
 ## 흐름
 
 ```
-idea ──기획실──▶ planning ──▶ ready ──빌드실──▶ building ──▶ qa ──검수실──▶ playtest ──대표──▶ kept
-                               ▲                                │                     │
-                               └──────── 불합격 · 수정 요청 ─────┴─────────────────────┘
-                                         (빌드 3회 실패하면 held → 대표 판단)
+idea ─디자인실─▶ designing ─▶ designed ─기획실─▶ planning ─▶ ready ─빌드실─▶ building ─▶ qa ─검수실─▶ playtest ─대표─▶ kept
+  ▲                              ▲                            ▲                          │                 │
+  │                              │                            └──── 불합격 · 수정 요청 ───┴─────────────────┘
+  └────── send_back('designer') ─┴──── send_back('planner') ──── (빌드실·검수실)
+          (기획실·빌드실·검수실)          빌드 3회 실패 / 반송 3번째 → held(대표 판단)
 ```
 
 | 단계 | 뜻 | 누가 다음으로 옮기나 |
 | --- | --- | --- |
-| `idea` | 아이디어 대기 | 기획실 `claim('planner')` (대표 승인 없이 가져감) |
-| `planning` | 기획 중 (기획실이 임대 보유) | 기획실 `submit_spec` |
+| `idea` | 디자인 대기 | 디자인실 `claim('designer')` — 대표 승인 없이 가져감 |
+| `designing` | 디자인 중 | 디자인실 `submit_design` |
+| `designed` | 기획 대기 | 기획실 `claim('planner')` |
+| `planning` | 기획 중 | 기획실 `submit_spec` |
 | `ready` | 빌드 대기 | 빌드실 `claim('builder')` |
 | `building` | 빌드 중 | 빌드실 `submit_build` |
 | `qa` | 검수 대기 | 검수실 `submit_qa` |
 | `playtest` | 대표 플레이 대기 | 대표: keep / fix / drop |
-| `kept` | 합격작 | — |
+| `kept` | 합격작 | — (ROADMAP 2차 빌드 대상) |
 | `held` | 대표 판단 필요 (`fix_notes`에 사유) | 대표: go / drop |
 | `dropped` | 버림 | — |
 
 - 공장은 대표 승인 없이 돈다. 대표의 결정은 게이트가 아니라 우선순위다.
-  - 아이디어: ★(대시보드의 별, 또는 `ceo_triage(..., 'go')`)를 단 것을 기획실이 먼저 가져간다. 버리기는 가져가지 않는다.
-  - 대표가 반드시 해야 하는 일은 플레이테스트 판정(keep / fix / drop)과 `held` 건 판단뿐이다.
-- 대기열 순서: ★ 먼저. 기획실은 그다음 중단된 기획 → 아이디어가 들어온 순, 다른 부서는 그 단계에서 오래 기다린 순.
-- 대기 상한(`wip_limits`)은 기본으로 **빌드 1개**만 건다. 아이디어는 많이 쌓아 두는 게 정상이다. 다른 단계에 상한이 필요해지면 `wip_limits`에 행만 추가한다.
+  - ★(대시보드의 별)을 단 아이디어를 디자인실이 먼저 가져간다. 버리기는 가져가지 않는다.
+  - 대표가 반드시 해야 하는 일은 플레이테스트 판정과 `held` 건 판단뿐이다.
+- 대기열 순서: ★ → 중단된 작업(임대 만료) → 들어온 순.
+- 대기 상한(`wip_limits`)은 **빌드 1개**만. 다른 단계에 필요해지면 `wip_limits`에 행만 추가한다.
 
 ## 작업 규칙 (모든 부서 공통)
 
 1. 시작하자마자 `select run_start('<role>')`로 출근부를 남기고, 끝날 때 반드시 `run_finish`로 닫는다.
-   - `success`: 무언가 진행시킴 · `noop`: 할 일이 없었음 · `blocked`: 게임 자체 문제로 대표에게 넘김 · `failed`: 운영 장애
-2. 일은 `claim`으로 가져온다. 돌려받은 `lease_owner`(= `<role>:<run_id>`)로만 제출할 수 있다. 임대는 기본 50분.
-3. **운영 장애**(GitHub/Supabase/도구 오류, 시간 부족)는 게임 탓이 아니다 → `release`로 임대만 풀고 `run_finish(..., 'failed', ...)`.
-4. **게임 자체의 문제**(기획이 모순, 구현 불가)만 `escalate`로 대표에게 넘긴다.
-5. 테이블을 직접 UPDATE/INSERT하지 않는다. 함수가 거절하면 그 메시지대로 고친다.
-6. 결과를 부풀리지 않는다. 확인하지 않은 것을 확인했다고 적지 않는다.
+   - `success`: 진행시킴 · `noop`: 할 일 없음 · `blocked`: 반송/대표 판단으로 넘김 · `failed`: 운영 장애
+2. 일은 `claim`으로 가져온다. 돌려받은 `lease_owner`(= `<role>:<run_id>`)로만 제출한다. 임대는 기본 50분.
+3. **운영 장애**(GitHub/Supabase/도구 오류, 시간 부족)는 게임 탓이 아니다 → `release`로 임대만 풀고 `failed`.
+4. **앞 부서 산출물의 문제**(규칙 모순, 검사가 규칙과 다름)는 고치지 말고 `send_back`으로 반송한다.
+   반송 사유는 다음 부서가 그대로 읽고 고칠 수 있게 구체적으로(문서 절 번호, must_work id, 근거).
+5. **아이디어 자체가 성립하지 않으면** `escalate`로 대표에게 넘긴다.
+6. 자기 단계의 파일만 고친다. 디자인실은 `design/`(GAME_DESIGN·ROADMAP·sim), 기획실은 `design/`(FIRST_BUILD·SCREENS·spec.json)와 `tests/`, 빌드실은 게임 코드와 `BUILD.md`.
+7. 테이블을 직접 UPDATE/INSERT하지 않는다. 함수가 거절하면 그 메시지대로 고친다.
+8. 결과를 부풀리지 않는다. 확인하지 않은 것을 확인했다고 적지 않는다.
 
-## 한 장 기획서 (`games.spec`)
+## 디자인 문서 (`design/GAME_DESIGN.md`)
+
+16개 절, 번호와 제목 고정(`tools/check_design.py --stage design`이 확인):
+
+1 한 줄 정의 · 2 플레이어 판타지 · 3 핵심 판단과 조작 · 4 코어 루프 · 5 세션 구조 · 6 규칙 · 7 상태 모델 ·
+8 콘텐츠 모델 · 9 난이도 곡선 · 10 성장과 메타 · 11 경제 · 12 피드백과 손맛 · 13 화면 흐름 · 14 비주얼 방향 ·
+15 깊이 검증 · 16 리스크와 미해결 질문
+
+- 15절에는 비평 라운드(발견한 약점 → 바꾼 설계)와 시뮬레이션 결론을 적는다.
+- 규칙 시뮬레이션: `design/sim/*.py`(표준 라이브러리, 시드 고정, 5분 안에 끝남) + `design/sim/RESULTS.md`.
+  점검 도구가 시뮬레이션을 다시 돌려 exit 0을 확인한다. 손맛이 핵심이라 시뮬레이션이 의미 없으면 `sim_status='skipped'`와 이유.
+
+## 기획 패키지
+
+- `design/FIRST_BUILD.md`: 범위 · 규칙 확정(수치표) · 콘텐츠 · 상태 흐름 · **테스트 인터페이스** · 빌드실 메모
+- `design/SCREENS.md`: spec의 화면마다 `## <screen id> — <이름>` 절. 텍스트 와이어프레임, 요소, 동작, 피드백
+- `design/spec.json`: DB `games.spec`과 같은 내용 (아래 형식)
+- `tests/smoke.gd`: must_work마다 `check("M<n>", ...)`. 테스트 인터페이스의 이름만 사용. 규칙을 실제로 확인
+- `tools/check_design.py --stage plan`이 위를 점검하고 `tests_sha256`을 출력. `submit_spec`에 커밋 SHA와 함께 제출
 
 ```json
 {
   "one_liner": "꺼지기 전에 등불을 눌러 밝힌다",
   "orientation": "portrait",
   "controls": "화면 탭 한 가지",
-  "core_loop": ["등불이 나타남", "꺼지기 전에 탭", "놓치면 목숨 -1"],
   "screens": [
     {"id": "title", "what": "제목, 시작 안내, 최고 기록"},
     {"id": "play", "what": "등불들, 점수, 남은 시간, 목숨"},
     {"id": "result", "what": "점수, 최고 기록, 다시 하기"}
   ],
   "win_lose": "45초 버티면 끝. 3번 놓치면 끝",
-  "session_seconds": 45,
-  "art_direction": "어두운 남색 밤, 따뜻한 노란 불빛. 도형만으로 그림",
   "must_work": [
     {"id": "M1", "text": "타이틀 화면에서 시작한다", "check": "실행 직후 state == TITLE"},
     {"id": "M2", "text": "탭하면 플레이가 시작된다", "check": "타이틀에서 탭 → state == PLAY"},
@@ -74,23 +109,15 @@ idea ──기획실──▶ planning ──▶ ready ──빌드실──▶ 
 }
 ```
 
-DB가 거절하는 경우 (`validate_spec`):
-- `one_liner`, `controls`, `win_lose`가 비어 있음
-- `orientation`이 `portrait` / `landscape`가 아님
-- `screens`가 1~4개가 아님
-- `must_work`가 3~10개가 아님, id가 `M숫자` 형식이 아니거나 중복, `text`나 `check`가 비어 있음
-
-`must_work`는 "이게 안 되면 게임이 아니다"인 것만 적는다. 다듬기, 연출, 밸런스는 `not_now`나 대표 플레이테스트에서 다룬다.
+DB가 거절하는 경우 (`validate_spec`): `one_liner`·`controls`·`win_lose` 비어 있음, `orientation`이 portrait/landscape 아님,
+`screens` 1~6개 아님, `must_work` 3~12개 아님, id가 `M숫자`가 아니거나 중복, `text`·`check` 비어 있음.
 
 ## 게임 저장소 규칙
 
-- 게임 하나 = `games/<slug>/` 하나 (Godot 4.7, GL Compatibility).
-- 새 게임은 `python tools/new_game.py <slug> --title ... --pitch ... --orientation ...`으로 만든다.
+- 게임 하나 = `games/<slug>/` 하나 (Godot 4.7, GL Compatibility). `python tools/new_game.py`로 만든다.
 - 화면 기준 크기: 세로 540×960, 가로 960×540.
-- `games/<slug>/SPEC.md`: DB의 기획서를 사람이 읽을 수 있게 옮긴 것. 빌드실이 쓴다.
-- `games/<slug>/tests/smoke.gd`: `must_work`마다 `check("M<n>", ...)`를 하나 이상 둔다. 입력은 메인 씬의 `debug_*` 훅으로 흉내 낸다.
-- 글자는 템플릿에 들어 있는 `res://assets/fonts/NotoSansKR-Medium.ttf`(한글 전체 + 영문, OFL)로 그린다. Godot 기본 폰트는 웹에서 한글이 네모로 깨진다.
-- 외부 에셋 없이 도형과 기본 폰트로 시작해도 된다. 에셋을 넣으면 `games/<slug>/assets/`에 두고 출처를 `SPEC.md`에 적는다.
+- 글자는 `res://assets/fonts/NotoSansKR-Medium.ttf`(한글 전체 + 영문, OFL). Godot 기본 폰트는 웹에서 한글이 깨진다.
+- 외부 에셋 없이 도형과 폰트로 시작한다. 에셋을 넣으면 `assets/`에 두고 출처를 `BUILD.md`에 적는다.
 
 ## CI
 
@@ -98,8 +125,9 @@ DB가 거절하는 경우 (`validate_spec`):
 
 1. `npm test`: DB 함수 시나리오 테스트
 2. 게임마다 `python tools/smoke.py games/<slug>`: import → 메인 씬 5초 실행(스크립트 오류 0) → `tests/smoke.gd`
+   - `design/`이 있는데 `BUILD.md`가 없는 게임(빌드 전)은 건너뛴다.
 3. 통과한 게임은 Web export → `play/<slug>/`
 4. 커밋 상태 `smoke/<slug>`를 `success` 또는 `failure`로 남김
 5. 대시보드와 `play/`를 GitHub Pages로 배포
 
-검수실은 빌드 커밋의 `smoke/<slug>` 상태를 보고 `submit_qa`의 `p_ci_passed`를 채운다.
+검수실은 빌드 커밋의 `smoke/<slug>` 상태와 `tests/smoke.gd` 해시를 보고 판정한다.
