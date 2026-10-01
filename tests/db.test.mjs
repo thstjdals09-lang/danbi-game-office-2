@@ -25,7 +25,7 @@ await db.exec(mig);
 await db.exec(`grant select on all tables in schema public to anon, authenticated;
                `); // Supabase 기본 grant 흉내
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, e;
 const ok = (c, m) => { if (c) pass++; else { fail++; console.log("FAIL:", m); } };
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const err = async (sql, p) => { try { await db.query(sql, p); return null; } catch (e) { return e.message; } };
@@ -45,6 +45,21 @@ ok((await q("select count(*)::int c from games where stage='idea'"))[0].c === 22
 ok(await err("select add_idea('night-bus','x','x','x','x')"), "slug 중복 거절");
 ok(await err("select add_idea('Bad Slug','x','x','x','x')"), "slug 형식 거절");
 
+// 아이디어 연구소 v2: 점수·승격 이유·다음 검증 질문
+const scores = { hook: 82, core_loop: 78, mobile_fit: 90, prototype: 85, asset: 70, visual: 74, growth: 66 };
+const [{ add_idea: g0 }] = await q(
+  "select add_idea('scored-idea','점수 아이디어','한 줄','탭','판타지','퍼즐',$1::jsonb,$2::text[],'첫 판에서 규칙이 바로 읽히는가')",
+  [JSON.stringify(scores), ["규칙이 한 문장", "조작이 손에 붙음"]]);
+const sg = (await q("select genre, idea_scores, why_promoted, next_test from games where id=$1", [g0]))[0];
+ok(sg.genre === "퍼즐" && sg.idea_scores.hook === 82 && sg.why_promoted.length === 2 && sg.next_test, "점수와 승격 이유 저장");
+e = await err("select add_idea('bad-score','x','x','x','x',null,$1::jsonb)", [JSON.stringify({ ...scores, hook: 120 })]);
+ok(e && e.includes("SCORES_INVALID"), "점수 범위 거절: " + e);
+e = await err("select add_idea('bad-score2','x','x','x','x',null,$1::jsonb)", [JSON.stringify({ hook: 80 })]);
+ok(e && e.includes("SCORES_INVALID"), "점수 항목 누락 거절: " + e);
+e = await err("select add_idea('bad-why','x','x','x','x',null,null,$1::text[])", [["a", "b", "c", "d", "e"]]);
+ok(e && e.includes("WHY_INVALID"), "승격 이유 5개 거절: " + e);
+await q("select ceo_triage($1,'drop')", [g0]);
+
 // 기획 대기 없으면 planner는 빈손
 ok((await q("select * from claim('planner','p1')")).length === 0, "기획할 것 없으면 빈손");
 await q("select ceo_triage($1,'go','짧게')", [g1]);
@@ -56,7 +71,7 @@ const c1 = await q("select * from claim('planner','p1')");
 ok(c1.length === 1 && c1[0].id === g2, "별표 우선");
 ok((await q("select * from claim('planner','p2')")).length === 1, "다른 기획자는 다른 건");
 ok((await q("select * from claim('planner','p3')")).length === 0, "임대 중인 건은 안 줌");
-let e = await err("select submit_spec($1,'p1',$2)", [g2, JSON.stringify({ ...spec, must_work: spec.must_work.slice(0, 2) })]);
+e = await err("select submit_spec($1,'p1',$2)", [g2, JSON.stringify({ ...spec, must_work: spec.must_work.slice(0, 2) })]);
 ok(e && e.includes("must_work는 3~10개"), "must_work 2개 거절: " + e);
 e = await err("select submit_spec($1,'p1',$2)", [g2, JSON.stringify({ ...spec, must_work: [...spec.must_work, { id: "M1", text: "x", check: "y" }] })]);
 ok(e && e.includes("중복"), "id 중복 거절: " + e);

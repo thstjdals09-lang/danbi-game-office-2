@@ -24,7 +24,7 @@
   var PAGE = 20;
 
   var state = { games: [], runs: [], events: [], builds: [], limits: {}, play: null, ceo: false, email: null };
-  var ui = { tab: null, query: "", shown: PAGE };
+  var ui = { tab: null, query: "", shown: PAGE, sort: "queue" };
 
   // ---------------------------------------------------------------- 유틸
 
@@ -79,7 +79,7 @@
     try {
       if (LIVE) {
         var r = await Promise.all([
-          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
+          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
           sb.from("runs").select("*").order("started_at", { ascending: false }).limit(200),
           sb.from("events").select("*").order("id", { ascending: false }).limit(30),
           sb.from("builds").select("game_id,attempt,commit_sha,smoke_passed,created_at").order("created_at", { ascending: false }).limit(500),
@@ -171,11 +171,18 @@
     var tab = tabs.find(function (t) { return t.id === ui.tab; });
     var items = tab.items;
     var isIdea = ui.tab === "idea";
-    $("search").hidden = !isIdea;
+    $("ideaTools").hidden = !isIdea;
     if (isIdea && ui.query) {
       var q = ui.query.toLowerCase();
-      items = items.filter(function (g) { return (g.title + " " + g.pitch + " " + g.core_verb + " " + g.slug).toLowerCase().indexOf(q) >= 0; });
+      items = items.filter(function (g) { return (g.title + " " + g.pitch + " " + g.core_verb + " " + (g.genre || "") + " " + g.slug).toLowerCase().indexOf(q) >= 0; });
     }
+    if (isIdea && ui.sort === "score") {
+      items = items.slice().sort(function (a, b) {
+        if (a.starred !== b.starred) return a.starred ? -1 : 1;
+        return (scoreAvg(b) || 0) - (scoreAvg(a) || 0);
+      });
+    }
+    $("sortBtn").textContent = ui.sort === "score" ? "점수순 ✓" : "점수순";
     var visible = isIdea ? items.slice(0, ui.shown) : items;
     $("more").hidden = !isIdea || items.length <= ui.shown;
     $("more").textContent = "더 보기 (" + (items.length - ui.shown) + "개 남음)";
@@ -189,11 +196,12 @@
         ? '<button class="star" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred + '" aria-label="우선 처리"' + dis + ">★</button>"
         : '<span class="bullet" aria-hidden="true"' + (ui.tab === "held" ? ' style="background:var(--red)"' : "") + "></span>";
       var meta = '<span class="chip verb">' + esc(g.core_verb) + "</span>";
+      if (g.genre) meta += '<span class="chip">' + esc(g.genre) + "</span>";
       if (g.attempt) meta += '<span class="chip att">빌드 ' + g.attempt + "회차</span>";
       var b = latestBuild(g.id);
       if (b && ui.tab !== "idea") meta += '<span class="chip mono">' + esc(b.commit_sha.slice(0, 7)) + "</span>";
       var body = '<div class="p">' + esc(g.pitch) + "</div>";
-      if (ui.tab === "idea") body += '<div class="p" style="color:var(--dim)">재미 가설 · ' + esc(g.fun_hypothesis) + "</div>";
+      if (ui.tab === "idea") body += '<div class="p" style="color:var(--dim)">' + esc(g.fun_hypothesis) + "</div>" + ideaDetail(g);
       if (ui.tab === "held" && g.fix_notes) body += '<div class="note">' + esc(g.fix_notes) + "</div>";
       var acts;
       if (ui.tab === "playtest") {
@@ -212,6 +220,28 @@
       return '<div class="item' + (ui.tab === "playtest" ? " attn" : "") + '">' + head + '<div><div class="t">' + esc(g.title) +
         "</div>" + body + '<div class="meta">' + meta + '</div><div class="acts">' + acts + "</div></div></div>";
     }).join("");
+  }
+
+  var SCORE_LABEL = { hook: "훅", core_loop: "반복", mobile_fit: "모바일", prototype: "시제품", asset: "에셋", visual: "화면", growth: "성장" };
+  function scoreAvg(g) {
+    var s = g.idea_scores;
+    if (!s) return null;
+    var ks = Object.keys(SCORE_LABEL);
+    return Math.round(ks.reduce(function (a, k) { return a + (s[k] || 0); }, 0) / ks.length);
+  }
+  function ideaDetail(g) {
+    var out = "";
+    if (g.idea_scores) {
+      out += '<div class="scores"><span class="avg num">' + scoreAvg(g) + "</span>" + Object.keys(SCORE_LABEL).map(function (k) {
+        var v = g.idea_scores[k];
+        return '<span class="sc' + (v < 70 ? " low" : v >= 85 ? " high" : "") + '">' + SCORE_LABEL[k] + ' <b class="num">' + esc(v) + "</b></span>";
+      }).join("") + "</div>";
+    }
+    if (g.why_promoted && g.why_promoted.length) {
+      out += '<ul class="why">' + g.why_promoted.map(function (w) { return "<li>" + esc(w) + "</li>"; }).join("") + "</ul>";
+    }
+    if (g.next_test) out += '<div class="next">먼저 검증할 것 · ' + esc(g.next_test) + "</div>";
+    return out;
   }
 
   function renderShelf() {
@@ -314,6 +344,7 @@
   });
 
   $("search").addEventListener("input", function (e) { ui.query = e.target.value.trim(); ui.shown = PAGE; renderInbox(); });
+  $("sortBtn").addEventListener("click", function () { ui.sort = ui.sort === "score" ? "queue" : "score"; ui.shown = PAGE; renderInbox(); });
   $("more").addEventListener("click", function () { ui.shown += PAGE; renderInbox(); });
   $("refresh").addEventListener("click", load);
   $("login").addEventListener("click", async function () {

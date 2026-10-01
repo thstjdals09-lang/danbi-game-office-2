@@ -75,12 +75,23 @@
   .chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.05); color: var(--muted); }
   .chip.verb { color: var(--cyan); background: rgba(103,217,235,.1); }
   .chip.att { color: var(--purple); background: rgba(188,156,255,.1); }
+  .scores { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 8px; }
+  .scores .avg { font-size: 15px; font-weight: 800; color: var(--accent); margin-right: 4px; }
+  .scores .sc { font-size: 10px; color: var(--muted); background: rgba(255,255,255,.04); border-radius: 6px; padding: 2px 6px; }
+  .scores .sc b { color: var(--text); }
+  .scores .sc.high b { color: var(--green); }
+  .scores .sc.low b { color: var(--amber); }
+  .why { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: var(--text); }
+  .why li { margin: 1px 0; }
+  .next { font-size: 12px; color: var(--cyan); margin-top: 6px; }
   .item .note { font-size: 12px; color: var(--amber); margin-top: 6px; white-space: pre-wrap; }
   .item .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .star { background: none; border: 0; cursor: pointer; font-size: 18px; line-height: 1; color: var(--dim); padding: 2px; align-self: start; }
   .star[aria-pressed="true"] { color: var(--amber); }
   .bullet { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); margin-top: 6px; }
   .search { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; color: var(--text); font: inherit; font-size: 13px; }
+  .idea-tools { display: flex; gap: 8px; }
+  .idea-tools .search { flex: 1; min-width: 0; }
   .empty { font-size: 12px; color: var(--dim); padding: 16px 4px; text-align: center; }
 
   /* 진열대 */
@@ -154,7 +165,10 @@
     <section class="panel" aria-labelledby="inboxTitle">
       <div class="ptitle"><h2 id="inboxTitle">대표 결재함</h2><span id="inboxHint">대표만 할 수 있는 결정</span></div>
       <div class="tabs" role="tablist" id="tabs"></div>
-      <input class="search" id="search" type="search" placeholder="아이디어 검색 (제목, 설명, 조작)" hidden>
+      <div class="idea-tools" id="ideaTools" hidden>
+        <input class="search" id="search" type="search" placeholder="아이디어 검색 (제목, 설명, 조작, 장르)">
+        <button class="btn ghost" id="sortBtn" type="button">점수순</button>
+      </div>
       <div class="list" id="inbox"></div>
       <button class="btn ghost" id="more" type="button" hidden>더 보기</button>
     </section>
