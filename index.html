@@ -129,27 +129,27 @@
   .star { background: none; border: 0; cursor: pointer; font-size: 20px; line-height: 1; color: var(--dim); padding: 2px 4px; }
   .star[aria-pressed="true"] { color: var(--amber); }
   .star:disabled { cursor: not-allowed; opacity: .6; }
-  /* 아이디어 대기: 왼쪽 목록(제목 + 조작)에서 고르고 오른쪽에서 읽는다. 수십 개가 쌓여도 목록은 훑기만 하면 된다 */
-  .ideas { display: grid; grid-template-columns: 264px minmax(0, 1fr); gap: 14px; align-items: start; }
+  /* 아이디어 대기: 2열 카드(제목 · 별 · 두 줄 설명 · 조작). 카드를 누르면 상세 창이 뜬다 */
+  .ideas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 640px) { .ideas { grid-template-columns: minmax(0, 1fr); } }
   .ideas > .empty { grid-column: 1 / -1; }
-  .ipick { display: grid; gap: 8px; min-width: 0; }
-  .ilist { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; display: grid; }
-  .iitem { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; text-align: left; background: none; border: 0; border-top: 1px solid var(--line-soft); padding: 6px 12px 6px 8px; cursor: pointer; line-height: 1.35; }
-  .iitem:first-child { border-top: 0; }
-  .iitem:hover { background: rgba(255,255,255,.03); }
-  .iitem:focus-visible { outline-offset: -2px; }
-  .iitem[aria-current="true"] { background: #16294a; box-shadow: inset 3px 0 0 var(--accent); }
-  .iitem .no { font-size: 11px; color: var(--dim); text-align: right; }
-  .iitem .tx { min-width: 0; display: grid; }
-  .iitem .t, .iitem .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .iitem .t { font-size: 14px; font-weight: 700; }
-  .iitem .v { font-size: 12px; color: var(--muted); }
-  .iitem .mk { color: var(--amber); font-size: 13px; }
-  .iview { position: sticky; top: 112px; max-height: calc(100vh - 128px); overflow: auto; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 18px 20px 20px; display: grid; gap: 14px; align-content: start; }
-  .iv-back { display: none; }
-  .iv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-  .iv-head h3 { margin: 2px 0 0; font-size: 20px; line-height: 1.3; }
+  .icard { position: relative; background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); }
+  .icard:hover { border-color: var(--line); }
+  .icard.on { border-color: rgba(243,200,106,.35); }
+  .ic-main { width: 100%; height: 100%; text-align: left; background: none; border: 0; border-radius: var(--radius); padding: 14px 16px; cursor: pointer; display: grid; gap: 8px; align-content: start; }
+  .ic-main .t { font-size: 15px; font-weight: 700; padding-right: 36px; }
+  .ic-main .d { font-size: 13px; line-height: 1.6; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ic-main .tags { display: flex; gap: 6px; min-width: 0; }
+  .ic-main .chip { overflow: hidden; text-overflow: ellipsis; }
+  .ic-main .chip.next { flex: none; }
+  .icard .star { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; padding: 0; font-size: 15px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); color: var(--muted); }
+  .icard .star[aria-pressed="true"] { color: var(--amber); border-color: rgba(243,200,106,.5); background: rgba(243,200,106,.1); }
+  .filters b { font-weight: 700; margin-left: 2px; }
+  .iview { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; padding: 16px 22px 20px; display: grid; gap: 14px; align-content: start; }
+  .iview h3 { margin: 0; font-size: 20px; line-height: 1.3; }
+  .iv-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .iv-turn { font-size: 12px; color: var(--dim); }
+  .iv-nav { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
   .istar { background: transparent; border-color: rgba(243,200,106,.5); color: var(--amber); }
   .istar:hover { background: rgba(243,200,106,.1); }
   .istar[aria-pressed="true"], .istar[aria-pressed="true"]:hover { background: var(--amber); border-color: var(--amber); color: #2a1c00; font-weight: 700; }
@@ -159,21 +159,13 @@
   .iv-facts dt { font-size: 12px; color: var(--dim); font-weight: 700; padding-top: 1px; }
   .iv-facts dd { margin: 0; font-size: 13px; }
   .iv-facts ul { margin: 0; padding-left: 16px; display: grid; gap: 2px; }
+  @media (max-width: 520px) { .iv-facts > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
   .bars { display: grid; gap: 4px; max-width: 360px; }
   .bars > div { display: grid; grid-template-columns: 44px minmax(0, 1fr) 24px; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); }
   .bars i { display: block; height: 6px; border-radius: 3px; background: var(--line); }
   .bars i b { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
   .bars .low i b { background: var(--amber); }
   .bars .n { text-align: right; color: var(--text); }
-  @media (max-width: 720px) {
-    .ideas { grid-template-columns: minmax(0, 1fr); }
-    .iview { display: none; position: static; max-height: none; }
-    .ideas.open .ipick { display: none; }
-    .ideas.open .iview { display: grid; }
-    .iv-back { display: block; }
-    .iv-facts > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-  }
-  #starBtn[aria-pressed="true"] { color: var(--amber); border-color: rgba(243,200,106,.45); }
   .why { margin: 0; padding-left: 18px; font-size: 13px; }
   .next-test { font-size: 13px; color: var(--cyan); }
   .label { font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: .04em; }
@@ -345,7 +337,10 @@
       <div class="sec-head"><h2>아이디어 대기</h2><span id="ideaCount"></span></div>
       <div class="tools">
         <input class="search" id="search" type="search" placeholder="검색 (제목, 설명, 조작, 장르)">
-        <button class="btn ghost" id="starBtn" type="button" aria-pressed="false">★만</button>
+      </div>
+      <div class="filters">
+        <button id="ideaAll" type="button" aria-pressed="true">전체</button>
+        <button id="ideaStar" type="button" aria-pressed="false">★ 우선</button>
       </div>
       <div class="ideas" id="ideas"></div>
       <button class="btn ghost" id="more" type="button" hidden>더 보기</button>
@@ -408,6 +403,8 @@
     <div class="doc-body" id="docBody"></div>
   </div>
 </dialog>
+
+<dialog id="ideaDlg"><div class="iview" id="ideaBody"></div></dialog>
 
 <dialog id="imgDlg">
   <div class="player">
