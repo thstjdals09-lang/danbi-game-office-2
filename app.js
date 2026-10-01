@@ -135,6 +135,7 @@
     $("docLink").href = "https://github.com/" + (CFG.repo || "") + "/blob/main/docs/OPERATING_MODEL.md";
     renderDepts();
     renderInbox();
+    renderWip();
     renderIdeas();
     renderShelf();
     renderLine();
@@ -200,8 +201,76 @@
 
   function docLink(g) {
     if (!g.design_version) return "";
-    return '<a class="btn ghost" target="_blank" rel="noopener" href="https://github.com/' + esc(CFG.repo) + "/tree/main/games/" +
-      encodeURIComponent(g.slug) + '/design">기획 문서</a>';
+    return '<button class="btn ghost" type="button" data-doc="' + g.id + '">문서 보기</button>';
+  }
+
+  // ---------------------------------------------------------------- 제작 중인 게임 + 문서 뷰어
+
+  var STAGE_LABEL = {
+    designing: ["디자인 중", ""], designed: ["디자인 완료 · 기획 대기", "wait"], planning: ["기획 중", ""],
+    ready: ["기획 완료 · 빌드 대기", "wait"], building: ["빌드 중", ""], qa: ["검수 대기", "wait"],
+    playtest: ["플레이 대기", "warn"], kept: ["합격작", "done"], held: ["판단 필요", "warn"]
+  };
+  var DOCS = [
+    { id: "design", label: "디자인", file: "design/GAME_DESIGN.md" },
+    { id: "sim", label: "시뮬레이션 결과", file: "design/sim/RESULTS.md" },
+    { id: "roadmap", label: "로드맵", file: "design/ROADMAP.md" },
+    { id: "first", label: "첫 빌드 기획", file: "design/FIRST_BUILD.md" },
+    { id: "screens", label: "화면", file: "design/SCREENS.md" },
+    { id: "build", label: "빌드 기록", file: "BUILD.md" }
+  ];
+  var docState = { game: null, tab: "design" };
+
+  function renderWip() {
+    var order = ["playtest", "held", "qa", "building", "ready", "planning", "designed", "designing", "kept"];
+    var games = state.games.filter(function (g) { return order.indexOf(g.stage) >= 0 && (g.design_version || g.stage === "designing"); })
+      .sort(function (a, b) { return order.indexOf(a.stage) - order.indexOf(b.stage) || new Date(b.stage_changed_at) - new Date(a.stage_changed_at); });
+    if (!games.length) { $("wip").innerHTML = '<div class="empty">아직 디자인이 시작된 게임이 없어요.</div>'; return; }
+    $("wip").innerHTML = games.map(function (g) {
+      var st = STAGE_LABEL[g.stage] || [g.stage, "wait"];
+      var ver = (g.design_version ? "디자인 v" + g.design_version : "") + (g.spec_version ? " · 기획 v" + g.spec_version : "") +
+        (g.sim_status === "passed" ? " · 시뮬레이션 검증" : g.sim_status === "skipped" ? " · 시뮬레이션 생략" : "");
+      return '<div class="wip-row"><div><div class="t">' + esc(g.title) + '<span class="stage-chip ' + st[1] + '">' + esc(st[0]) + "</span>" +
+        (ver ? '<span class="mono">' + esc(ver) + "</span>" : "") + "</div>" +
+        (g.design_summary ? '<div class="summary">' + esc(g.design_summary) + "</div>" : '<div class="p">' + esc(g.pitch) + "</div>") +
+        (g.fix_notes ? '<div class="note">' + esc(g.fix_notes) + "</div>" : "") + "</div>" +
+        '<div class="acts" style="margin:0">' + (g.design_version ? '<button class="btn" type="button" data-doc="' + g.id + '">문서 보기</button>' : "") +
+        (g.stage === "playtest" || g.stage === "kept" ? '<button class="btn go" type="button" data-play="' + g.id + '">▶ 플레이</button>' : "") + "</div></div>";
+    }).join("");
+  }
+
+  function rawUrl(g, file) {
+    return "https://raw.githubusercontent.com/" + CFG.repo + "/main/games/" + encodeURIComponent(g.slug) + "/" + file;
+  }
+
+  async function showDoc(tab) {
+    var g = docState.game;
+    docState.tab = tab;
+    var doc = DOCS.find(function (d) { return d.id === tab; });
+    $("docTabs").innerHTML = DOCS.map(function (d) {
+      return '<button class="tab" type="button" data-doctab="' + d.id + '" aria-selected="' + (d.id === tab) + '">' + esc(d.label) + "</button>";
+    }).join("");
+    $("docGithub").href = "https://github.com/" + CFG.repo + "/blob/main/games/" + encodeURIComponent(g.slug) + "/" + doc.file;
+    $("docBody").innerHTML = '<div class="empty">불러오는 중…</div>';
+    try {
+      var r = await fetch(rawUrl(g, doc.file), { cache: "no-store" });
+      if (docState.game !== g || docState.tab !== tab) return;
+      if (r.status === 404) { $("docBody").innerHTML = '<div class="empty">아직 이 문서가 없어요. 해당 부서가 작업을 마치면 생겨요.</div>'; return; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      var md = await r.text();
+      var html = window.marked ? window.marked.parse(md, { gfm: true, breaks: false }) : "<pre>" + esc(md) + "</pre>";
+      $("docBody").innerHTML = window.DOMPurify ? window.DOMPurify.sanitize(html) : "<pre>" + esc(md) + "</pre>";
+      $("docBody").scrollTop = 0;
+    } catch (e) {
+      $("docBody").innerHTML = '<div class="empty">문서를 불러오지 못했어요: ' + esc(e.message || e) + "</div>";
+    }
+  }
+
+  function openDoc(g) {
+    docState.game = g;
+    $("docTitle").textContent = g.title;
+    $("docDlg").showModal();
+    showDoc("design");
   }
 
   // 아이디어 대기: 디자인실이 가져갈 순서(★ → 들어온 순)대로 보여 준다. 대표는 ★로 우선순위만 바꾼다.
@@ -339,6 +408,8 @@
 
     if ("close" in d) { el.closest("dialog").close("cancel"); return; }
     if (d.tab) { ui.tab = d.tab; ui.shown = PAGE; renderInbox(); return; }
+    if (d.doc) { openDoc(state.games.find(function (x) { return x.id === d.doc; })); return; }
+    if (d.doctab) { showDoc(d.doctab); return; }
     if (d.play) { openPlayer(state.games.find(function (x) { return x.id === d.play; })); return; }
     if (d.star) {
       var sg = state.games.find(function (x) { return x.id === d.star; });
