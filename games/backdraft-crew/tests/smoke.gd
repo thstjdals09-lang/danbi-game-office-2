@@ -1,5 +1,5 @@
 extends SceneTree
-## 불길 속으로 — 첫 빌드 검사 (기획실 작성, 기획 v1)
+## 불길 속으로 — 첫 빌드 검사 (기획실 작성, 기획 v2: M1 문 (6,2) 버팀 기대값 10 → 8)
 ## design/spec.json 의 must_work M1~M12 를 design/FIRST_BUILD.md "테스트 인터페이스"만 써서 확인한다.
 ## 기대값은 design/first_build_replay.py (기준 구현 design/sim/sim.py)로 계산했다. 장면(SCENES)도 그 스크립트가 만든 것이다.
 ## 빌드실은 이 파일을 바꾸지 않는다. 틀렸다고 판단되면 반송한다.
@@ -142,7 +142,7 @@ func m1_title_starts_first_building() -> void:
 	check("M1", vic(0)["breath"] == 12 and vic(0)["state"] == "in" and vic(1)["breath"] == 12 and vic(1)["state"] == "in", "둘 다 숨 12, 안에 있음")
 	check("M1", fire(7, 1) == 2 and fire(9, 3) == 2 and fire(7, 4) == 0, "오른쪽 위 방의 윗줄 셋이 숨죽은 불")
 	check("M1", room(3)["smolder"] and room(3)["gas"] == 4 and room(3)["air"] == 0 and room(3)["hp"] == 25 and room(3)["sealed"], "방 3: 숨죽음, 가스 4, 공기 0, 버팀 25, 밀폐")
-	check("M1", not door(6, 2)["open"] and door(6, 2)["sign"] == "smolder" and door(6, 2)["hp"] == 10, "문 (6,2): 닫힘, 징후 smolder")
+	check("M1", not door(6, 2)["open"] and door(6, 2)["sign"] == "smolder" and door(6, 2)["hp"] == 8, "문 (6,2): 닫힘, 징후 smolder, 버팀 8(도착 전에 깎였다)")
 	check("M1", door(3, 8)["open"] and door(3, 8)["sign"] == "none" and not door(4, 5)["open"] and door(4, 5)["sign"] == "none", "문 (3,8)은 열려 있고, 불 없는 방의 문 (4,5)는 징후 없음")
 	check("M1", game.debug_cell(V(0, 9))["kind"] == "V" and game.debug_cell(V(5, 12))["kind"] == "E" and game.debug_cell(V(6, 2))["kind"] == "D", "깨진 창 (0,9), 출구 (5,12), 문 (6,2)")
 	check("M1", not room(2)["sealed"] and room(0)["full"] == 11 and room(1)["full"] == 21, "깨진 창이 있는 방 2는 밀폐 아님. 복도 11칸, 방 1은 21칸")
