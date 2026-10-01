@@ -25,7 +25,13 @@
 | 빌드실 | `ready` | 게임 코드(`scripts/rules.gd` 규칙 · `main.gd` 화면), `BUILD.md`(SCREENS 대조표), `shots/*.png`, `tests/extra.gd` | `prompts/builder.md` |
 | 검수실 | `qa` | 판정(CI·검사 파일 무결성·수치·대조표의 정직함·스크린샷) | `prompts/qa.md` |
 | 아트실 | `playtest`·`kept` 중 아트가 없는 게임 (흐름을 막지 않는 옆 작업) | `art/A·B·C` 아트 방향 3안, `art/key.png`, `art/ART.md` | `prompts/artist.md` |
-| 대표 | `playtest`, `held` | 플레이 판정, 판단, 아트 방향 선택 | 대시보드 |
+| 프로덕션 디자인실 | `kept` (합격작) | `design/PRODUCTION_<N>.md`, 고친 `GAME_DESIGN.md`·`sim/`·`ROADMAP.md`, 대표 결정 요청 | `prompts/prod-designer.md` |
+| 프로덕션 기획실 | `designed` (2차 이상) | `design/BUILD_<N>.md`, 고친 `SCREENS.md`, 새 `spec.json`(이전 것은 `spec_m<k>.json`), `tests/smoke.gd`에 검사 추가 | `prompts/prod-planner.md` |
+| 프로덕션 개발실 | `ready` (2차 이상) | 기존 코드 위에 N차 빌드, `BUILD.md`에 N차 기록 | `prompts/prod-developer.md` |
+| 대표 | `playtest`, `held`, 결정 요청 | 플레이 판정, 판단, 부서가 추린 선택지 중 결정, 아트 방향 선택 | 대시보드 |
+
+단계(`stage`)는 "어디에 있나", 차수(`milestone`)는 "몇 번째 빌드인가"다. 같은 단계라도 1차는 프로토타입 부서(디자인실·기획실·빌드실)가,
+2차 이상은 프로덕션 부서가 가져간다. 검수실과 아트실은 차수와 상관없이 같다.
 
 ## 흐름
 
@@ -47,7 +53,8 @@ idea ─디자인실─▶ designing ─▶ designed ─기획실─▶ planning
 | `building` | 빌드 중 | 빌드실 `submit_build` |
 | `qa` | 검수 대기 | 검수실 `submit_qa` |
 | `playtest` | 대표 플레이 대기 | 대표: keep / fix / drop |
-| `kept` | 합격작 | — (ROADMAP 2차 빌드 대상) |
+| `kept` | 합격 · 다음 차수 대기 | 프로덕션 디자인실 `claim('prod_designer')` — 차수가 1 오른다. 대표가 `ceo_finish`로 끝낼 수도 있다 |
+| `done` | 완료 (더 키우지 않음) | — |
 | `held` | 대표 판단 필요 (`fix_notes`에 사유) | 대표: go / drop |
 | `dropped` | 버림 | — |
 
@@ -56,6 +63,30 @@ idea ─디자인실─▶ designing ─▶ designed ─기획실─▶ planning
   - 대표가 반드시 해야 하는 일은 플레이테스트 판정과 `held` 건 판단뿐이다.
 - 대기열 순서: ★ → 중단된 작업(임대 만료) → 들어온 순.
 - 대기 상한(`wip_limits`)은 **빌드 1개**만. 다른 단계에 필요해지면 `wip_limits`에 행만 추가한다.
+
+## 합격 뒤: 프로덕션 루프
+
+합격은 끝이 아니라 "로드맵의 다음 조각으로 넘어간다"는 뜻이다. 대표가 "여기까지"를 누를 때까지 같은 고리를 돈다.
+
+```
+kept ─프로덕션 디자인실─▶ designing(차수+1) ─▶ designed ─프로덕션 기획실─▶ planning ─▶ ready
+     ─프로덕션 개발실─▶ building ─▶ qa ─검수실─▶ playtest ─대표─▶ kept(또 한 차수) | done(여기까지)
+```
+
+- 프로덕션 디자인실은 **대표의 합격 메모(`keep_notes`) → 지난 빌드에서 드러난 사실 → 로드맵** 순으로 근거를 삼아 이번 차수를 정한다.
+- 기존 검사는 회귀 검사로 남는다. 차수마다 `must_work` id를 이어서 붙이고(1차 M1~M12 → 2차 M13~), 이전 기획서는 `design/spec_m<k>.json`으로 보관한다.
+  `tools/check_design.py --milestone <N>`이 이전 차수 검사가 사라지지 않았는지 확인한다.
+- 프로덕션 기획이 올라온 뒤 개발실 빌드가 올라오기 전까지는 새 검사가 실패하므로 CI의 `smoke/<slug>`가 빨갛고 Web 빌드가 내려간다. 정상이다.
+- 실제 스토어 공개는 이 흐름에 없다(지금은 하지 않는다). 출시한다고 가정하고 쌓되, 비용이 드는 일은 출시할 만한 게임이 생겼을 때 정한다.
+
+### 대표 결정 요청 (`decisions`)
+
+수익 모델, 목표 플랫폼과 분량, 게임 이름, 톤처럼 **대표만 정할 수 있는 것**은 부서가 정하지 않는다.
+선택지 2~4개(뜻·장점·단점)와 추천·이유를 `ask_decision`으로 올리고, 대표는 결재함에서 고르기만 한다(`ceo_decide`).
+
+- 결정을 기다리느라 공장이 멈추지 않는다. 결정 전에는 추천안을 가정하고 진행하되, 가정했다는 것을 문서에 적는다.
+- 같은 게임·같은 주제는 하나만 있다. 결정 전이면 새 내용으로 바뀌고, 결정된 뒤에는 부서가 바꿀 수 없다.
+- 대표가 추천과 다르게 고르면, 다음 차수의 프로덕션 디자인실이 그 결정을 읽고 설계에 반영한다.
 
 ## 작업 규칙 (모든 부서 공통)
 

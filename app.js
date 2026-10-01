@@ -11,24 +11,28 @@
     { id: "planner", name: "기획실" },
     { id: "builder", name: "빌드실" },
     { id: "qa", name: "검수실" },
-    { id: "artist", name: "아트실" }
+    { id: "artist", name: "아트실" },
+    { id: "prod_designer", name: "프로덕션 디자인실" },
+    { id: "prod_planner", name: "프로덕션 기획실" },
+    { id: "prod_developer", name: "프로덕션 개발실" }
   ];
   var STATIONS = [
-    { stage: "idea", who: "디자인실", nm: "디자인 대기" },
-    { stage: "designing", who: "디자인실", nm: "디자인 중" },
-    { stage: "designed", who: "기획실", nm: "기획 대기" },
-    { stage: "planning", who: "기획실", nm: "기획 중" },
-    { stage: "ready", who: "빌드실", nm: "빌드 대기" },
-    { stage: "building", who: "빌드실", nm: "빌드 중" },
+    { stage: "idea", who: "디자인", nm: "디자인 대기" },
+    { stage: "designing", who: "디자인", nm: "디자인 중" },
+    { stage: "designed", who: "기획", nm: "기획 대기" },
+    { stage: "planning", who: "기획", nm: "기획 중" },
+    { stage: "ready", who: "빌드·개발", nm: "빌드 대기" },
+    { stage: "building", who: "빌드·개발", nm: "빌드 중" },
     { stage: "qa", who: "검수실", nm: "검수 대기" },
     { stage: "playtest", who: "대표", nm: "플레이 대기" },
-    { stage: "kept", who: "", nm: "합격작", goal: true }
+    { stage: "kept", who: "프로덕션", nm: "다음 차수 대기", goal: true },
+    { stage: "done", who: "", nm: "완료", goal: true }
   ];
   var RUN_LABEL = { success: "진행", noop: "할 일 없음", running: "작업 중", blocked: "대표 판단 요청", failed: "운영 장애" };
-  var PAGE = 20;
+  var PAGE = 40;
 
-  var state = { games: [], runs: [], events: [], builds: [], limits: {}, play: null, ceo: false, email: null };
-  var ui = { view: "home", filter: "all", game: null, query: "", shown: PAGE, sort: "queue", open: {} };
+  var state = { games: [], runs: [], events: [], builds: [], decisions: [], limits: {}, play: null, ceo: false, email: null };
+  var ui = { view: "home", filter: "all", game: null, query: "", shown: PAGE, onlyStar: false, open: {} };
 
   // ---------------------------------------------------------------- 유틸
 
@@ -83,16 +87,18 @@
     try {
       if (LIVE) {
         var r = await Promise.all([
-          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,design_summary,sim_status,design_version,spec_version,art,art_pick,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
+          sb.from("games").select("id,slug,title,pitch,core_verb,fun_hypothesis,genre,idea_scores,why_promoted,next_test,design_summary,sim_status,design_version,spec_version,art,art_pick,milestone,keep_notes,stage,attempt,starred,spec,fix_notes,lease_owner,lease_until,created_at,stage_changed_at").order("stage_changed_at", { ascending: false }).limit(2000),
           sb.from("runs").select("*").order("started_at", { ascending: false }).limit(200),
           sb.from("events").select("*").order("id", { ascending: false }).limit(30),
           sb.from("builds").select("game_id,attempt,commit_sha,smoke_passed,created_at").order("created_at", { ascending: false }).limit(500),
-          sb.from("wip_limits").select("*")
+          sb.from("wip_limits").select("*"),
+          sb.from("decisions").select("*").order("created_at", { ascending: false }).limit(500)
         ]);
         r.forEach(function (x) { if (x.error) throw x.error; });
         state.games = r[0].data; state.runs = r[1].data; state.events = r[2].data; state.builds = r[3].data;
         state.limits = {};
         r[4].data.forEach(function (l) { state.limits[l.stage] = l.max_items; });
+        state.decisions = r[5].data;
       } else if (!state.games.length) {
         Object.assign(state, demoData());
       }
@@ -139,33 +145,67 @@
   var STAGE_LABEL = {
     idea: ["디자인 대기", "wait"], designing: ["디자인 중", ""], designed: ["기획 대기", "wait"], planning: ["기획 중", ""],
     ready: ["빌드 대기", "wait"], building: ["빌드 중", ""], qa: ["검수 대기", "wait"],
-    playtest: ["플레이 대기", "warn"], kept: ["합격작", "done"], held: ["판단 필요", "warn"], dropped: ["버림", "off"]
+    playtest: ["플레이 대기", "warn"], kept: ["합격 · 다음 차수 대기", "done"], held: ["판단 필요", "warn"], dropped: ["버림", "off"],
+    done: ["완료", "done"]
   };
   // 진행 점 6칸: 디자인 · 기획 · 빌드 · 검수 · 플레이 · 합격
-  var STEP_OF = { idea: 0, designing: 0, designed: 1, planning: 1, ready: 2, building: 2, qa: 3, playtest: 4, kept: 5 };
+  var STEP_OF = { idea: 0, designing: 0, designed: 1, planning: 1, ready: 2, building: 2, qa: 3, playtest: 4, kept: 5, done: 5 };
   var WIP_STAGES = ["designing", "designed", "planning", "ready", "building", "qa"];
-  var DOCS = [
-    { id: "design", label: "디자인", file: "design/GAME_DESIGN.md" },
-    { id: "sim", label: "시뮬레이션", file: "design/sim/RESULTS.md" },
-    { id: "roadmap", label: "로드맵", file: "design/ROADMAP.md" },
-    { id: "first", label: "첫 빌드 기획", file: "design/FIRST_BUILD.md" },
-    { id: "screens", label: "화면", file: "design/SCREENS.md" },
-    { id: "build", label: "빌드 기록", file: "BUILD.md" },
-    { id: "shots", label: "스크린샷", dir: "shots" }
-  ];
+  // 문서 탭. 차수 2 이상이면 차수마다 프로덕션 설계·기획 문서가 붙는다(최신 차수가 앞).
+  function docsOf(g) {
+    var docs = [{ id: "design", label: "디자인", file: "design/GAME_DESIGN.md" }];
+    for (var n = g.milestone || 1; n >= 2; n--) {
+      docs.push({ id: "prod" + n, label: n + "차 설계", file: "design/PRODUCTION_" + n + ".md" });
+      docs.push({ id: "build" + n, label: n + "차 기획", file: "design/BUILD_" + n + ".md" });
+    }
+    return docs.concat([
+      { id: "sim", label: "시뮬레이션", file: "design/sim/RESULTS.md" },
+      { id: "roadmap", label: "로드맵", file: "design/ROADMAP.md" },
+      { id: "first", label: "첫 빌드 기획", file: "design/FIRST_BUILD.md" },
+      { id: "screens", label: "화면", file: "design/SCREENS.md" },
+      { id: "build", label: "빌드 기록", file: "BUILD.md" },
+      { id: "shots", label: "스크린샷", dir: "shots" }
+    ]);
+  }
   var docState = { game: null, tab: "design" };
 
   function count(stages) { return state.games.filter(function (g) { return stages.indexOf(g.stage) >= 0; }).length; }
   function dis() { return state.ceo ? "" : ' disabled title="대표 로그인 필요"'; }
   function stageChip(g) {
     var st = STAGE_LABEL[g.stage] || [g.stage, "wait"];
-    return '<span class="stage ' + st[1] + '">' + esc(st[0]) + "</span>";
+    return '<span class="stage ' + st[1] + '">' + esc(st[0]) + "</span>" + (g.milestone > 1 ? '<span class="chip ms">' + g.milestone + "차</span>" : "");
+  }
+  function gameOf(id) { return state.games.find(function (x) { return x.id === id; }); }
+  function pendingDecisions() {
+    return state.decisions.filter(function (d) {
+      var g = gameOf(d.game_id);
+      return !d.chosen && g && g.stage !== "dropped" && g.stage !== "done";
+    });
+  }
+  function deptName(owner) {
+    var id = String(owner || "").split(":")[0];
+    var r = ROLES.find(function (x) { return x.id === id; });
+    return r ? r.name : id;
+  }
+  function decisionHtml(d, withGame) {
+    var g = gameOf(d.game_id);
+    var opts = (d.options || []).map(function (o) {
+      var rec = o.id === d.recommended, chosen = o.id === d.chosen;
+      return '<div class="opt' + (chosen ? " chosen" : "") + '"><div class="nm">' + esc(o.label) + (rec ? '<span class="chip next">부서 추천</span>' : "") + (chosen ? '<span class="chip ok">대표 결정</span>' : "") + "</div>" +
+        '<div class="ds">' + esc(o.detail) + "</div>" +
+        (o.pros ? '<div class="pc"><b class="pro">+</b> ' + esc(o.pros) + "</div>" : "") + (o.cons ? '<div class="pc"><b class="con">−</b> ' + esc(o.cons) + "</div>" : "") +
+        '<div class="acts"><button class="btn small' + (chosen ? " go" : "") + '" type="button" data-decide="' + d.id + '" data-choice="' + esc(o.id) + '"' + dis() + ">" + (chosen ? "✓ 결정함" : "이걸로") + "</button></div></div>";
+    }).join("");
+    return '<article class="card' + (d.chosen ? "" : " attn") + '"><div class="card-title">' + esc(d.question) + "</div>" +
+      (withGame && g ? '<div class="p"><button class="linkish" type="button" data-game="' + esc(g.slug) + '">' + esc(g.title) + "</button> · " + esc(deptName(d.asked_by)) + "</div>" : "") +
+      '<div class="opts">' + opts + "</div>" + (d.reason ? '<div class="p">추천 이유: ' + esc(d.reason) + "</div>" : "") +
+      (d.note ? '<div class="note">' + esc(d.note) + "</div>" : "") + "</article>";
   }
   function versionText(g) {
     var parts = [];
     if (g.design_version) parts.push("디자인 v" + g.design_version);
     if (g.spec_version) parts.push("기획 v" + g.spec_version);
-    if (g.attempt) parts.push("빌드 " + g.attempt + "회차");
+    if (g.attempt) parts.push((g.milestone > 1 ? g.milestone + "차 " : "") + "빌드 " + g.attempt + "회차");
     var b = latestBuild(g.id);
     if (b) parts.push(b.commit_sha.slice(0, 7));
     if (g.sim_status === "passed") parts.push("시뮬레이션 검증");
@@ -204,8 +244,8 @@
   }
 
   function renderNav() {
-    var todo = count(["playtest", "held"]);
-    var badges = { home: todo, games: count(WIP_STAGES.concat(["playtest", "kept"])), ideas: count(["idea"]), factory: null };
+    var todo = count(["playtest", "held"]) + pendingDecisions().length;
+    var badges = { home: todo, games: count(WIP_STAGES.concat(["playtest", "kept", "done"])), ideas: count(["idea"]), factory: null };
     $("nav").innerHTML = VIEWS.map(function (v) {
       var n = badges[v.id];
       var badge = n == null ? "" : '<span class="badge num' + (v.id === "home" && n > 0 ? " attn" : "") + '">' + n + "</span>";
@@ -219,9 +259,10 @@
     var play = byStage("playtest").sort(queueOrder);
     var held = byStage("held").sort(queueOrder);
     var wip = count(WIP_STAGES);
+    var asks = pendingDecisions();
     var tiles = [
       { n: play.length, l: "플레이할 게임", h: "해 보고 판정", go: "home", attn: play.length > 0 },
-      { n: held.length, l: "판단 필요", h: "부서가 넘긴 건", go: "home", attn: held.length > 0 },
+      { n: asks.length + held.length, l: "결정·판단 필요", h: "부서가 올린 건", go: "home", attn: asks.length + held.length > 0 },
       { n: wip, l: "제작 중", h: "디자인 → 검수", go: "games", attn: false }
     ];
     $("tiles").innerHTML = tiles.map(function (t) {
@@ -236,8 +277,12 @@
         '<button class="btn" type="button" data-game="' + esc(g.slug) + '">' + (g.art ? "아트 방향 보기" : "게임 열기") + "</button>" + docButton(g) + "</div>" +
         '<div class="acts"><button class="btn" type="button" data-pt="keep" data-id="' + g.id + '"' + dis() + ">합격</button>" +
         '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis() + ">고쳐서 다시</button>" +
-        '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div></article>";
+        '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis() + ">버리기</button>" +
+        '<button class="btn ghost" type="button" data-finish="' + g.id + '"' + dis() + ">여기까지</button></div></article>";
     }).join("") : '<div class="empty">플레이할 게임이 없어요. 검수를 통과하면 여기에 와요.</div>';
+
+    $("askSec").hidden = !asks.length;
+    $("asks").innerHTML = asks.map(function (d) { return decisionHtml(d, true); }).join("");
 
     $("heldSec").hidden = !held.length;
     $("held").innerHTML = held.map(function (g) {
@@ -257,10 +302,10 @@
 
   var LIB_STAGES = WIP_STAGES.concat(["playtest", "kept", "held", "dropped"]);
   var GAME_FILTERS = [
-    { id: "all", label: "전체", stages: WIP_STAGES.concat(["playtest", "kept"]) },
+    { id: "all", label: "전체", stages: WIP_STAGES.concat(["playtest", "kept", "done"]) },
     { id: "playtest", label: "플레이 대기", stages: ["playtest"] },
     { id: "wip", label: "제작 중", stages: WIP_STAGES },
-    { id: "kept", label: "합격작", stages: ["kept"] },
+    { id: "kept", label: "합격·완료", stages: ["kept", "done"] },
     { id: "off", label: "보류·버림", stages: ["held", "dropped"] }
   ];
 
@@ -276,13 +321,15 @@
     var d = artOf(g, g.art_pick || "A");
     return d ? gameUrl(g, d.image) : null;
   }
-  function canPlay(g) { return (g.stage === "playtest" || g.stage === "kept") && playable(g.slug) !== false; }
+  // 한 번이라도 합격한 게임(2차 이상)은 다음 차수를 만드는 동안에도 직전 빌드를 플레이할 수 있다
+  function hasBuild(g) { return g.stage === "playtest" || g.stage === "kept" || g.stage === "done" || g.milestone > 1; }
+  function canPlay(g) { return hasBuild(g) && playable(g.slug) !== false; }
   function stepsHtml(g) {
     var step = STEP_OF[g.stage];
     var stopped = g.stage === "held" || g.stage === "dropped";
     var out = "";
     for (var k = 0; k < 6; k++) {
-      out += '<i class="' + (stopped ? (k === 0 ? "stop" : "") : k < step || g.stage === "kept" ? "done" : k === step ? "now" : "") + '"></i>';
+      out += '<i class="' + (stopped ? (k === 0 ? "stop" : "") : k < step || g.stage === "kept" || g.stage === "done" ? "done" : k === step ? "now" : "") + '"></i>';
     }
     return '<span class="steps" aria-hidden="true">' + out + "</span>";
   }
@@ -297,7 +344,7 @@
       return '<button type="button" data-filter="' + f.id + '" aria-pressed="' + (f.id === ui.filter) + '">' + esc(f.label) + ' <span class="num">' + count(f.stages) + "</span></button>";
     }).join("");
     var filter = GAME_FILTERS.find(function (f) { return f.id === ui.filter; }) || GAME_FILTERS[0];
-    var order = ["playtest", "kept", "qa", "building", "ready", "planning", "designed", "designing", "held", "dropped"];
+    var order = ["playtest", "kept", "done", "qa", "building", "ready", "planning", "designed", "designing", "held", "dropped"];
     var games = state.games.filter(function (g) { return filter.stages.indexOf(g.stage) >= 0; })
       .sort(function (a, b) { return order.indexOf(a.stage) - order.indexOf(b.stage) || new Date(b.stage_changed_at) - new Date(a.stage_changed_at); });
     if (!games.length) { $("games").innerHTML = '<div class="empty" style="grid-column:1/-1">여기에 해당하는 게임이 없어요.</div>'; return; }
@@ -319,14 +366,27 @@
     // 플레이
     var play = canPlay(g);
     html += '<div class="playbar"><div><div class="label">게임 플레이</div><div class="p">' +
-      (play ? "웹에서 바로 플레이할 수 있어요." : g.stage === "playtest" || g.stage === "kept" ? "Web 빌드를 준비 중이에요." : "아직 빌드 전이에요. 검수를 통과하면 플레이할 수 있어요.") +
+      (play ? (g.milestone > 1 && WIP_STAGES.indexOf(g.stage) >= 0 ? "지금 플레이되는 것은 직전 차수 빌드예요. " + g.milestone + "차를 만드는 중이에요." : "웹에서 바로 플레이할 수 있어요.")
+        : hasBuild(g) ? (g.milestone > 1 && WIP_STAGES.indexOf(g.stage) >= 0 ? g.milestone + "차 검사를 먼저 올려 둔 상태라 Web 빌드가 잠시 내려가 있어요. 개발실 빌드가 올라오면 다시 열려요." : "Web 빌드를 준비 중이에요.")
+        : "아직 빌드 전이에요. 검수를 통과하면 플레이할 수 있어요.") +
       '</div></div><div class="acts">' + (play ? '<button class="btn go" type="button" data-play="' + g.id + '">▶ 웹에서 플레이</button>' : "") + docButton(g) + "</div></div>";
 
     // 대표 판정 (플레이 대기일 때)
     if (g.stage === "playtest") {
       html += '<div class="acts"><button class="btn" type="button" data-pt="keep" data-id="' + g.id + '"' + dis() + ">합격</button>" +
         '<button class="btn warn" type="button" data-pt="fix" data-id="' + g.id + '"' + dis() + ">고쳐서 다시</button>" +
-        '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div>";
+        '<button class="btn bad" type="button" data-pt="drop" data-id="' + g.id + '"' + dis() + ">버리기</button>" +
+        '<button class="btn ghost" type="button" data-finish="' + g.id + '"' + dis() + ">여기까지</button></div>";
+    }
+    if (g.stage === "kept") {
+      html += '<div class="playbar"><div><div class="label">다음 차수</div><div class="p">프로덕션 디자인실이 ' + ((g.milestone || 1) + 1) + '차를 설계할 차례예요. 더 키우지 않으려면 여기까지로 끝낼 수 있어요.</div></div>' +
+        '<div class="acts"><button class="btn ghost" type="button" data-finish="' + g.id + '"' + dis() + ">여기까지</button></div></div>";
+    }
+    if (g.keep_notes) html += '<div class="sec"><div class="label">대표 메모</div><div class="summary">' + esc(g.keep_notes) + "</div></div>";
+    var ds = state.decisions.filter(function (d) { return d.game_id === g.id; });
+    if (ds.length) {
+      html += '<div class="sec"><div class="sec-head"><h2>대표 결정</h2><span>' + (ds.some(function (d) { return !d.chosen; }) ? "결정 전에는 부서 추천안으로 진행해요" : "결정한 뒤에도 바꿀 수 있어요") + "</span></div>" +
+        '<div class="list">' + ds.map(function (d) { return decisionHtml(d, false); }).join("") + "</div></div>";
     }
     if (g.fix_notes) html += '<div class="note">' + esc(g.fix_notes) + "</div>";
 
@@ -346,7 +406,7 @@
           '" data-title="핵심 화면(실제 빌드)"><div><div class="label">핵심 화면 · 실제 빌드</div><div class="p">' + esc(g.art.key_reason || "") + "</div></div></div>";
       }
     } else {
-      html += '<div class="empty">' + (g.stage === "playtest" || g.stage === "kept" ? "아트실이 아직 작업하지 않았어요." : "빌드가 검수를 통과하면 아트실이 방향 3가지를 만들어요.") + "</div>";
+      html += '<div class="empty">' + (hasBuild(g) ? "아트실이 아직 작업하지 않았어요." : "빌드가 검수를 통과하면 아트실이 방향 3가지를 만들어요.") + "</div>";
     }
     html += "</div>";
 
@@ -368,12 +428,6 @@
   // ---------------------------------------------------------------- 아이디어
 
   var SCORE_LABEL = { hook: "훅", core_loop: "반복", mobile_fit: "모바일", prototype: "시제품", asset: "에셋", visual: "화면", growth: "성장" };
-  function scoreAvg(g) {
-    var sc = g.idea_scores;
-    if (!sc) return null;
-    var ks = Object.keys(SCORE_LABEL);
-    return Math.round(ks.reduce(function (a, k) { return a + (sc[k] || 0); }, 0) / ks.length);
-  }
   // 디자인실이 가져갈 순서: ★ → 들어온 순
   function designerOrder(a, b) {
     if (a.starred !== b.starred) return a.starred ? -1 : 1;
@@ -382,31 +436,30 @@
 
   function renderIdeas() {
     var all = byStage("idea").sort(designerOrder);
-    $("ideaCount").textContent = all.length + "개 · 디자인실이 위에서부터 가져가요";
+    var starCount = all.filter(function (g) { return g.starred; }).length;
+    $("ideaCount").textContent = all.length + "개 · 번호 순서대로 디자인실이 가져가요";
+    $("starBtn").textContent = "★만 " + starCount;
+    $("starBtn").setAttribute("aria-pressed", ui.onlyStar);
+    var turn = {};  // 디자인실 차례. 검색·필터와 상관없이 전체 줄에서의 순번
+    all.forEach(function (g, i) { turn[g.id] = i + 1; });
     var items = all;
+    if (ui.onlyStar) items = items.filter(function (g) { return g.starred; });
     if (ui.query) {
       var q = ui.query.toLowerCase();
       items = items.filter(function (g) { return (g.title + " " + g.pitch + " " + g.core_verb + " " + (g.genre || "") + " " + g.slug).toLowerCase().indexOf(q) >= 0; });
     }
-    if (ui.sort === "score") {
-      items = items.slice().sort(function (a, b) {
-        if (a.starred !== b.starred) return a.starred ? -1 : 1;
-        return (scoreAvg(b) || 0) - (scoreAvg(a) || 0);
-      });
-    }
-    $("sortBtn").textContent = ui.sort === "score" ? "점수순 ✓" : "점수순";
     var visible = items.slice(0, ui.shown);
     $("more").hidden = items.length <= ui.shown;
     $("more").textContent = "더 보기 (" + (items.length - ui.shown) + "개 남음)";
-    if (!visible.length) { $("ideas").innerHTML = '<div class="empty">' + (ui.query ? "검색 결과가 없어요." : "대기 중인 아이디어가 없어요.") + "</div>"; return; }
+    if (!visible.length) {
+      $("ideas").innerHTML = '<div class="empty">' + (ui.query ? "검색 결과가 없어요." : ui.onlyStar ? "★ 표시한 아이디어가 없어요." : "대기 중인 아이디어가 없어요.") + "</div>";
+      return;
+    }
 
-    var next = all[0] && all[0].id;
-    $("ideas").innerHTML = visible.map(function (g) {
+    function row(g) {
       var key = "i:" + g.id;
-      var avg = scoreAvg(g);
-      var chips = '<span class="chip verb">' + esc(g.core_verb) + "</span>" + (g.genre ? '<span class="chip">' + esc(g.genre) + "</span>" : "") +
-        (g.id === next ? '<span class="chip next">다음 디자인</span>' : "");
-      var body = '<div class="p">' + esc(g.pitch) + '</div><div class="p" style="color:var(--dim)">' + esc(g.fun_hypothesis) + "</div>";
+      var chips = '<div class="chips"><span class="chip verb">' + esc(g.core_verb) + "</span>" + (g.genre ? '<span class="chip">' + esc(g.genre) + "</span>" : "") + "</div>";
+      var body = '<div class="p">' + esc(g.pitch) + '</div><div class="p" style="color:var(--dim)">' + esc(g.fun_hypothesis) + "</div>" + chips;
       if (g.idea_scores) {
         body += '<div class="scores">' + Object.keys(SCORE_LABEL).map(function (k) {
           var v = g.idea_scores[k];
@@ -418,11 +471,18 @@
       }
       if (g.next_test) body += '<div class="label">먼저 검증할 것</div><div class="next-test">' + esc(g.next_test) + "</div>";
       body += '<div class="acts"><button class="btn bad small" type="button" data-tri="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div>";
-      return '<details class="fold" data-fold="' + key + '"' + foldOpen(key) + '><summary><button class="star" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred +
-        '" aria-label="먼저 디자인하기"' + dis() + '>★</button><span class="fold-main"><span class="fold-title">' + esc(g.title) + chips +
-        '</span><span class="fold-sub">' + esc(g.pitch) + '</span></span><span class="fold-side">' + (avg == null ? "" : '<span class="score num">' + avg + "</span>") +
+      return '<details class="irow" data-fold="' + key + '"' + foldOpen(key) + '><summary><span class="no num">' + turn[g.id] +
+        '</span><button class="star" type="button" data-star="' + g.id + '" aria-pressed="' + !!g.starred +
+        '" aria-label="먼저 디자인하기"' + dis() + '>★</button><span class="line"><span class="t">' + esc(g.title) + '</span><span class="d">' + esc(g.pitch) +
+        '</span></span><span class="fold-side">' + (turn[g.id] === 1 ? '<span class="chip next">다음</span>' : "") +
         '<span class="chev">›</span></span></summary><div class="fold-body">' + body + "</div></details>";
-    }).join("");
+    }
+    function group(label, list) {
+      return list.length ? (label ? '<div class="label">' + label + " · " + list.length + "</div>" : "") + '<div class="ilist">' + list.map(row).join("") + "</div>" : "";
+    }
+    var first = visible.filter(function (g) { return g.starred; });
+    var rest = visible.filter(function (g) { return !g.starred; });
+    $("ideas").innerHTML = group(first.length && rest.length ? "★ 먼저 디자인" : "", first) + group(first.length && rest.length ? "들어온 순" : "", rest);
   }
 
   // ---------------------------------------------------------------- 공장
@@ -446,7 +506,7 @@
       var list = byStage(st.stage).sort(queueOrder);
       var cap = state.limits[st.stage];
       var full = cap && list.length >= cap;
-      var names = list.slice(0, 4).map(function (g) { return g.title; }).join(", ") + (list.length > 4 ? " 외 " + (list.length - 4) : "");
+      var names = list.slice(0, 4).map(function (g) { return g.title + (g.milestone > 1 ? "(" + g.milestone + "차)" : ""); }).join(", ") + (list.length > 4 ? " 외 " + (list.length - 4) : "");
       if (cap) names = (names ? names + " · " : "") + "상한 " + cap + (full ? "(꽉 참)" : "");
       return '<div class="lrow' + (list.length ? "" : " zero") + (full ? " full" : "") + (st.goal ? " goal" : "") + '"><span class="who">' + esc(st.who || "완료") +
         '</span><span>' + esc(st.nm) + '</span><span class="ct num">' + list.length + '</span><span class="names" title="' + esc(names) + '">' + esc(names) + "</span></div>";
@@ -468,8 +528,10 @@
   async function showDoc(tab) {
     var g = docState.game;
     docState.tab = tab;
-    var doc = DOCS.find(function (d) { return d.id === tab; });
-    $("docTabs").innerHTML = DOCS.map(function (d) {
+    var docs = docsOf(g);
+    var doc = docs.find(function (d) { return d.id === tab; }) || docs[0];
+    tab = docState.tab = doc.id;
+    $("docTabs").innerHTML = docs.map(function (d) {
       return '<button type="button" data-doctab="' + d.id + '" aria-selected="' + (d.id === tab) + '">' + esc(d.label) + "</button>";
     }).join("");
     $("docGithub").href = "https://github.com/" + CFG.repo + "/" + (doc.dir ? "tree" : "blob") + "/main/games/" + encodeURIComponent(g.slug) + "/" + (doc.dir || doc.file);
@@ -509,7 +571,7 @@
     docState.game = g;
     $("docTitle").textContent = g.title;
     $("docDlg").showModal();
-    showDoc("design");
+    showDoc(g.milestone > 1 ? "prod" + g.milestone : "design");
   }
 
   // ---------------------------------------------------------------- 대화상자
@@ -562,6 +624,20 @@
       await act("ceo_pick_art", { p_game: g.id, p_pick: same ? null : d.pick }, g.title + " · " + (same ? "아트 방향 선택 취소" : "아트 방향 " + d.pick + " 선택"));
       return;
     }
+    if (d.decide) {
+      var dec = state.decisions.find(function (x) { return x.id === d.decide; });
+      if (!dec) return;
+      var opt = (dec.options || []).find(function (o) { return o.id === d.choice; });
+      await act("ceo_decide", { p_decision: dec.id, p_choice: d.choice, p_note: null }, "결정: " + (opt ? opt.label : d.choice));
+      return;
+    }
+    if (d.finish) {
+      var fg = gameOf(d.finish);
+      var fnote = await askNote(fg.title + " · 여기까지", "더 키우지 않고 끝내요. 이유를 남겨도 돼요(선택).", false);
+      if (fnote === null) return;
+      await act("ceo_finish", { p_game: fg.id, p_note: fnote || null }, fg.title + " · 완료");
+      return;
+    }
     if (d.doc) { openDoc(state.games.find(function (x) { return x.id === d.doc; })); return; }
     if (d.doctab) { showDoc(d.doctab); return; }
     if (d.play) { openPlayer(state.games.find(function (x) { return x.id === d.play; })); return; }
@@ -582,7 +658,7 @@
         note = await askNote(g.title + " · 고쳐서 다시", "빌드실이 다음 빌드에서 고칠 것을 적어 주세요. 이 메모가 그대로 전달돼요.", true);
         if (!note) return;
       } else if (d.pt === "keep") {
-        note = await askNote(g.title + " · 합격", "좋았던 점이나 다음에 키울 방향을 남겨도 돼요(선택).", false);
+        note = await askNote(g.title + " · 합격", "좋았던 점, 아쉬운 점, 다음에 키울 방향을 적어 주세요. 프로덕션 디자인실이 이 메모를 가장 먼저 읽어요(선택).", false);
         if (note === null) return;
       }
       var msgs = { keep: "합격", fix: "수정 요청 보냄", drop: "버림" };
@@ -594,12 +670,17 @@
   // 접힌 줄을 펼친 상태는 새로고침(1분마다 자동) 뒤에도 유지한다
   document.addEventListener("toggle", function (e) {
     var key = e.target.dataset && e.target.dataset.fold;
-    if (key) ui.open[key] = e.target.open;
+    if (!key) return;
+    ui.open[key] = e.target.open;
+    // 아이디어 줄은 한 번에 하나만 펼친다
+    if (e.target.open && key.indexOf("i:") === 0) {
+      document.querySelectorAll("details.irow[open]").forEach(function (d) { if (d !== e.target) d.open = false; });
+    }
   }, true);
   window.addEventListener("hashchange", function () { setView(location.hash.slice(1)); });
 
   $("search").addEventListener("input", function (e) { ui.query = e.target.value.trim(); ui.shown = PAGE; renderIdeas(); });
-  $("sortBtn").addEventListener("click", function () { ui.sort = ui.sort === "score" ? "queue" : "score"; ui.shown = PAGE; renderIdeas(); });
+  $("starBtn").addEventListener("click", function () { ui.onlyStar = !ui.onlyStar; ui.shown = PAGE; renderIdeas(); });
   $("more").addEventListener("click", function () { ui.shown += PAGE; renderIdeas(); });
   $("refresh").addEventListener("click", load);
   $("login").addEventListener("click", async function () {
@@ -667,8 +748,10 @@
   }
 
   function demoAct(fn, a) {
+    if (fn === "ceo_decide") { var dd = state.decisions.find(function (x) { return x.id === a.p_decision; }); if (dd) dd.chosen = a.p_choice; return; }
     var g = state.games.find(function (x) { return x.id === a.p_game; });
     if (!g) return;
+    if (fn === "ceo_finish") g.stage = "done";
     if (fn === "ceo_star") g.starred = a.p_starred;
     if (fn === "ceo_pick_art") { g.art_pick = a.p_pick; return; }
     if (fn === "ceo_triage") { if (a.p_decision === "go" && g.stage === "idea") g.starred = true; else g.stage = a.p_decision === "go" ? "ready" : a.p_decision === "hold" ? "held" : "dropped"; }

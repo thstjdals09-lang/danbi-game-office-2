@@ -33,7 +33,8 @@
 
 must_work 항목마다 판정한다. ok=true 조건:
 - 코드에 구현되어 있고, CI에서 해당 check가 통과했다.
-- FIRST_BUILD.md 규칙표의 수치가 코드 상수와 일치한다(다르면 ok=false, 파일:줄과 두 값을 적는다).
+- 기획 문서 규칙표의 수치가 코드 상수와 일치한다(다르면 ok=false, 파일:줄과 두 값을 적는다).
+  기획 문서는 받은 행의 milestone 이 1이면 design/FIRST_BUILD.md, N(2 이상)이면 design/BUILD_<N>.md 다.
 - 그 항목과 관련된 화면 요소가 SCREENS.md의 배치·동작·피드백대로다.
 각 항목 note에 근거(파일:줄 또는 관찰한 것)를 짧게 적는다.
 
@@ -43,6 +44,9 @@ must_work 항목마다 판정한다. ok=true 조건:
 - games/<slug>/shots/*.png 가 있으면 열어 본다(git show <sha>:games/<slug>/shots/<파일> > /tmp/x.png 후 이미지 읽기).
   SCREENS.md 요소가 보이는가, 글자가 잘리거나 겹치는가, 한글이 깨지는가, 배치 원칙(보드 위쪽, 버튼 엄지 영역 등)을 지켰는가.
 - 스크린샷이 없으면 그 사실을 notes에 적고 코드로만 판정한다.
+- milestone 이 2 이상이면(프로덕션 빌드): 판정할 must_work 는 이번 차수 spec 의 것이다. 추가로
+  이전 차수 검사(design/spec_m<k>.json 의 id)가 smoke.gd 에 남아 있고 CI 에서 통과했는지,
+  BUILD.md 의 "기존 항목 중 깨진 것"이 사실인지(이전 스크린샷과 새 스크린샷 비교) 확인한다. 기존 화면이 깨졌으면 fail.
 - not_now 에 있는 것을 만들었거나 문서에 없는 규칙·수치를 넣었으면 fail.
 
 === 3. 제출 ===

@@ -84,6 +84,17 @@
   .chip { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.06); color: var(--muted); white-space: nowrap; }
   .chip.verb { color: var(--cyan); background: rgba(103,217,235,.1); }
   .chip.next { color: var(--purple); background: rgba(188,156,255,.12); }
+  .chip.ms { color: var(--amber); background: rgba(243,200,106,.12); font-weight: 700; }
+  .chip.ok { color: var(--green); background: rgba(85,214,168,.13); }
+  .linkish { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-size: inherit; }
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+  .opt { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; align-content: start; }
+  .opt.chosen { border-color: var(--green); }
+  .opt .nm { font-size: 14px; font-weight: 700; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .opt .ds { font-size: 12px; color: var(--text); }
+  .opt .pc { font-size: 12px; color: var(--muted); }
+  .opt .pro { color: var(--green); } .opt .con { color: var(--red); }
+  .opt .acts { margin-top: auto; }
   .stage { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; color: var(--accent); background: rgba(116,167,255,.14); white-space: nowrap; }
   .stage.wait { color: var(--muted); background: rgba(255,255,255,.07); }
   .stage.done { color: var(--green); background: rgba(85,214,168,.13); }
@@ -118,7 +129,21 @@
   .star { background: none; border: 0; cursor: pointer; font-size: 20px; line-height: 1; color: var(--dim); padding: 2px 4px; }
   .star[aria-pressed="true"] { color: var(--amber); }
   .star:disabled { cursor: not-allowed; opacity: .6; }
-  .score { font-size: 15px; font-weight: 800; color: var(--accent); min-width: 28px; text-align: right; }
+  /* 아이디어 대기: 한 줄짜리 촘촘한 목록. 수십 개가 쌓여도 훑어볼 수 있게 */
+  .ilist { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }
+  .irow + .irow { border-top: 1px solid var(--line-soft); }
+  .irow > summary { list-style: none; cursor: pointer; padding: 6px 12px 6px 8px; display: grid; grid-template-columns: 22px auto minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+  .irow > summary::-webkit-details-marker { display: none; }
+  .irow > summary:hover, .irow[open] > summary { background: rgba(255,255,255,.03); }
+  .irow[open] .chev { transform: rotate(90deg); }
+  .irow .no { font-size: 11px; color: var(--dim); text-align: right; }
+  .irow .star { font-size: 16px; }
+  .irow .line { min-width: 0; display: flex; gap: 10px; align-items: baseline; white-space: nowrap; overflow: hidden; }
+  .irow .t { font-size: 14px; font-weight: 700; flex: 0 0 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .irow .d { font-size: 12px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .irow[open] .d { display: none; }
+  .irow .fold-body { padding: 4px 14px 14px 42px; background: rgba(255,255,255,.03); }
+  #starBtn[aria-pressed="true"] { color: var(--amber); border-color: rgba(243,200,106,.45); }
   .scores { display: flex; flex-wrap: wrap; gap: 5px; }
   .scores .sc { font-size: 11px; color: var(--muted); background: rgba(255,255,255,.05); border-radius: 6px; padding: 2px 7px; }
   .scores .sc b { color: var(--text); }
@@ -265,6 +290,10 @@
       <div class="sec-head"><h2>플레이테스트</h2><span>직접 해 보고 판정해 주세요</span></div>
       <div class="list" id="playtest"></div>
     </div>
+    <div class="sec" id="askSec" hidden>
+      <div class="sec-head"><h2>결정 요청</h2><span>부서가 추린 선택지예요. 고르기 전에는 추천안으로 진행해요</span></div>
+      <div class="list" id="asks"></div>
+    </div>
     <div class="sec" id="heldSec">
       <div class="sec-head"><h2>판단 필요</h2><span>부서가 스스로 풀지 못한 건</span></div>
       <div class="list" id="held"></div>
@@ -291,7 +320,7 @@
       <div class="sec-head"><h2>아이디어 대기</h2><span id="ideaCount"></span></div>
       <div class="tools">
         <input class="search" id="search" type="search" placeholder="검색 (제목, 설명, 조작, 장르)">
-        <button class="btn ghost" id="sortBtn" type="button">점수순</button>
+        <button class="btn ghost" id="starBtn" type="button" aria-pressed="false">★만</button>
       </div>
       <div class="list" id="ideas"></div>
       <button class="btn ghost" id="more" type="button" hidden>더 보기</button>

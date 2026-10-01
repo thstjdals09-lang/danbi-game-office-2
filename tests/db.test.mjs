@@ -38,6 +38,7 @@ const spec = {
   not_now: ["사운드"],
 };
 
+const allOk = JSON.stringify(spec.must_work.map(m => ({ id: m.id, ok: true })));
 const [{ add_idea: g1 }] = await q("select add_idea('night-bus','밤버스','설명','탭','재밌다')");
 const [{ add_idea: g2 }] = await q("select add_idea('moon-crane','달 크레인','설명','드래그','재밌다')");
 for (let i = 0; i < 20; i++) await q(`select add_idea('idea-${i}','아이디어 ${i}','p','v','f')`);
@@ -138,7 +139,6 @@ await q("select * from claim('builder','b1')");
 await q("select submit_build($1,'b1','abcdef3',null,null,$2)", [g2, H]);
 ok((await stage(g2)).stage === "qa", "CI 미확인 빌드도 검수로");
 await q("select * from claim('qa','q1')");
-const allOk = JSON.stringify(spec.must_work.map(m => ({ id: m.id, ok: true })));
 e = await err("select submit_qa($1,'q1','pass',null,$2,null,$3)", [g2, allOk, H]);
 ok(e && e.includes("CI 결과"), "CI 미확인 제출 거절: " + e);
 e = await err("select submit_qa($1,'q1','pass',false,$2,null,$3)", [g2, allOk, H]);
@@ -171,6 +171,54 @@ await q("select ceo_pick_art($1,'B')", [g2]);
 ok((await q("select art_pick from games where id=$1", [g2]))[0].art_pick === "B", "대표가 아트 방향 선택");
 ok(await err("select ceo_pick_art($1,'D')", [g2]), "없는 방향 선택 거절");
 ok(await err("select ceo_pick_art($1,'A')", [g1]), "아트가 없는 게임은 선택 불가");
+
+// 프로덕션: 합격작은 차수가 올라 프로덕션 부서가 가져간다. 프로토타입 부서는 차수 1만.
+ok((await q("select keep_notes from games where id=$1", [g2]))[0].keep_notes === "좋다", "합격 메모 저장");
+ok(!(await q("select * from claim('designer','dz')")).some(r => r.id === g2), "프로토타입 디자인실은 합격작을 가져가지 않음");
+await q("select release(id,'dz','테스트') from games where lease_owner='dz'");
+const pd = await q("select * from claim('prod_designer','pd1')");
+ok(pd.length === 1 && pd[0].id === g2 && pd[0].stage === "designing" && pd[0].milestone === 2, "프로덕션 디자인실이 합격작을 가져가고 차수 2가 됨");
+// 대표 결정 요청
+const opts = [{ id: "free", label: "무료", detail: "광고·결제 없음" }, { id: "ads", label: "광고", detail: "보상형 광고" }];
+e = await err("select ask_decision($1,'pd1','business_model','수익 모델',$2::jsonb,'paid','이유')", [g2, JSON.stringify(opts)]);
+ok(e && e.includes("DECISION_INVALID"), "선택지에 없는 추천 거절: " + e);
+e = await err("select ask_decision($1,'pd1','business_model','수익 모델',$2::jsonb,'free','이유')", [g2, JSON.stringify(opts.slice(0, 1))]);
+ok(e && e.includes("2~4개"), "선택지 1개 거절: " + e);
+const [{ ask_decision: dec }] = await q("select ask_decision($1,'pd1','business_model','수익 모델을 무엇으로 할까요?',$2::jsonb,'free','첫 출시는 절차가 가장 적다')", [g2, JSON.stringify(opts)]);
+const [{ ask_decision: dec2 }] = await q("select ask_decision($1,'pd1','business_model','수익 모델을 무엇으로 할까요? (수정)',$2::jsonb,'ads','다시 계산')", [g2, JSON.stringify(opts)]);
+ok(dec === dec2 && (await q("select recommended from decisions where id=$1", [dec]))[0].recommended === "ads", "결정 전이면 같은 주제는 새 내용으로 바뀜");
+ok(await err("select ceo_decide($1,'paid')", [dec]), "선택지에 없는 결정 거절");
+await q("select ceo_decide($1,'free','일단 무료')", [dec]);
+await q("select ask_decision($1,'pd1','business_model','또 바꿈',$2::jsonb,'ads','x')", [g2, JSON.stringify(opts)]);
+let dd = (await q("select chosen, question from decisions where id=$1", [dec]))[0];
+ok(dd.chosen === "free" && dd.question.includes("(수정)"), "대표가 결정한 뒤에는 요청으로 뒤엎지 못함");
+// 차수 2의 디자인 → 기획 → 개발 → 검수
+await q("select submit_design($1,'pd1','aaa2222','2차 설계','passed')", [g2]);
+ok((await q("select * from claim('planner','pz')")).every(r => r.id !== g2), "프로토타입 기획실은 차수 2를 가져가지 않음");
+await q("select release(id,'pz','테스트') from games where lease_owner='pz'");
+const pp = await q("select * from claim('prod_planner','pp1')");
+ok(pp.length === 1 && pp[0].id === g2 && pp[0].stage === "planning", "프로덕션 기획실이 차수 2를 가져감");
+await q("select send_back($1,'pp1','designer','2차 규칙이 시뮬레이션과 다름')", [g2]);
+let sb2 = (await q("select stage, milestone, lease_owner from games where id=$1", [g2]))[0];
+ok(sb2.stage === "designing" && sb2.milestone === 2 && sb2.lease_owner === null, "차수 2의 디자인 반송: 차수 그대로, 중단된 디자인으로");
+const pd2 = await q("select * from claim('prod_designer','pd2')");
+ok(pd2[0].id === g2 && pd2[0].milestone === 2, "이어받을 때는 차수가 다시 오르지 않음");
+await q("select submit_design($1,'pd2','aaa3333','2차 설계 수정','passed')", [g2]);
+await q("select * from claim('prod_planner','pp2')");
+await q("select submit_spec($1,'pp2',$2,'bbb2222',$3)", [g2, JSON.stringify(spec), H2]);
+const bz = await q("select * from claim('builder','bz')");
+ok(bz.length === 1 && bz[0].id === g1, "프로토타입 빌드실은 차수 1(g1)만 가져감");
+await q("select release($1,'bz','테스트')", [g1]);
+const dv = await q("select * from claim('prod_developer','dv1')");
+ok(dv.length === 1 && dv[0].id === g2 && dv[0].attempt === 1, "프로덕션 개발실이 차수 2를 가져감");
+await q("select submit_build($1,'dv1','ccc2222',true,'2차 빌드',$2)", [g2, H2]);
+await q("select * from claim('qa','q2')");
+await q("select submit_qa($1,'q2','pass',true,$2,null,$3)", [g2, allOk, H2]);
+ok((await stage(g2)).stage === "playtest", "차수 2도 검수 → 플레이 대기");
+ok(await err("select ceo_finish($1)", [g1]), "빌드 대기 게임은 '여기까지' 불가");
+await q("select ceo_finish($1,'여기까지')", [g2]);
+ok((await stage(g2)).stage === "done", "여기까지 → done");
+ok((await q("select * from claim('prod_designer','pd3')")).length === 0, "끝낸 게임은 프로덕션이 가져가지 않음");
 
 // 임대 만료된 빌드 이어받기 + 운영 장애 release
 await q("select * from claim('builder','b1',0)");
@@ -227,6 +275,8 @@ ok(await err("select * from claim('builder','hack')"), "anon 워커 함수 불�
 ok(await err("select ceo_triage($1,'drop')", [g1]), "anon 대표 함수 불가");
 ok(await err("select * from claim_art('hack')"), "anon 아트 함수 불가");
 ok(await err("select ceo_pick_art($1,'A')", [g2]), "anon 아트 선택 불가");
+ok(await err("select ceo_decide($1,'free')", [(await q("select id from decisions limit 1"))[0].id]), "anon 결정 불가");
+ok((await q("select count(*)::int c from decisions"))[0].c === 1, "anon 결정 요청 읽기 가능");
 ok((await q("select count(*)::int c from ceo_emails").catch(() => [{ c: 0 }]))[0].c === 0, "anon은 대표 메일 못 봄");
 await db.exec("reset role; set role authenticated");
 await db.exec(`set request.jwt.claims = '{"email":"someone@example.com","role":"authenticated"}'`);

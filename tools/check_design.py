@@ -1,7 +1,12 @@
 """디자인실·기획실 산출물을 기계적으로 점검한다. 통과해야 submit_design / submit_spec 할 수 있다.
 
-    python tools/check_design.py games/<slug> --stage design [--sim passed|skipped]
-    python tools/check_design.py games/<slug> --stage plan   [--godot PATH]
+    python tools/check_design.py games/<slug> --stage design [--sim passed|skipped] [--milestone N]
+    python tools/check_design.py games/<slug> --stage plan   [--godot PATH] [--milestone N]
+
+--milestone 은 몇 차 빌드인지(기본 1 = 프로토타입). 2 이상은 프로덕션 부서의 산출물을 본다:
+  design: 위 항목 + design/PRODUCTION_<N>.md
+  plan:   FIRST_BUILD.md 대신 design/BUILD_<N>.md, 이전 차수 기획서 design/spec_m<k>.json 보관,
+          이전 차수의 must_work 검사가 tests/smoke.gd 에 그대로 남아 있는지(회귀 검사)
 
 design: design/GAME_DESIGN.md(16개 절), design/ROADMAP.md, 시뮬레이션(design/sim/*.py 재실행 + RESULTS.md)
 plan:   design/FIRST_BUILD.md(테스트 인터페이스), design/SCREENS.md, design/spec.json(DB와 같은 규칙),
@@ -68,7 +73,16 @@ def validate_spec(p):
     return errs
 
 
-def check_design(game, sim, errs):
+def check_design(game, sim, errs, milestone=1):
+    if milestone >= 2:
+        pm = os.path.join(game, "design", f"PRODUCTION_{milestone}.md")
+        if not os.path.exists(pm):
+            errs.append(f"design/PRODUCTION_{milestone}.md 없음")
+        else:
+            text = read(pm)
+            for title in ("대표 메모", "이번 차수 범위", "규칙 변경", "결정 요청"):
+                if not re.search(rf"^##\s*.*{re.escape(title)}", text, re.M):
+                    errs.append(f"PRODUCTION_{milestone}.md: '{title}' 절 없음")
     gd = os.path.join(game, "design", "GAME_DESIGN.md")
     if not os.path.exists(gd):
         errs.append("design/GAME_DESIGN.md 없음")
@@ -110,8 +124,9 @@ def find_godot(explicit):
     return None
 
 
-def check_plan(game, godot, errs):
-    for f in ("GAME_DESIGN.md", "FIRST_BUILD.md", "SCREENS.md", "spec.json"):
+def check_plan(game, godot, errs, milestone=1):
+    build_doc = "FIRST_BUILD.md" if milestone == 1 else f"BUILD_{milestone}.md"
+    for f in ("GAME_DESIGN.md", build_doc, "SCREENS.md", "spec.json"):
         if not os.path.exists(os.path.join(game, "design", f)):
             errs.append(f"design/{f} 없음")
     test = os.path.join(game, "tests", "smoke.gd")
@@ -120,9 +135,21 @@ def check_plan(game, godot, errs):
     if errs:
         return None
 
-    fb = read(os.path.join(game, "design", "FIRST_BUILD.md"))
+    fb = read(os.path.join(game, "design", build_doc))
     if not re.search(r"^##\s*.*테스트 인터페이스", fb, re.M):
-        errs.append("FIRST_BUILD.md에 '테스트 인터페이스' 절 없음")
+        errs.append(f"{build_doc}에 '테스트 인터페이스' 절 없음")
+
+    # 이전 차수의 기획서는 spec_m<k>.json 으로 보관하고, 그 must_work 검사는 smoke.gd 에 그대로 남아야 한다
+    regression = []
+    for k in range(1, milestone):
+        old = os.path.join(game, "design", f"spec_m{k}.json")
+        if not os.path.exists(old):
+            errs.append(f"design/spec_m{k}.json 없음 — {k}차 기획서(spec.json)를 이 이름으로 보관하세요")
+            continue
+        try:
+            regression += [m.get("id") for m in json.loads(read(old)).get("must_work") or []]
+        except json.JSONDecodeError as e:
+            errs.append(f"spec_m{k}.json 파싱 실패: {e}")
 
     try:
         spec = json.loads(read(os.path.join(game, "design", "spec.json")))
@@ -142,9 +169,15 @@ def check_plan(game, godot, errs):
     for i in ids:
         if not re.search(rf'check\(\s*"{re.escape(str(i))}"', smoke):
             errs.append(f'tests/smoke.gd에 check("{i}", ...) 없음')
-    extra = set(re.findall(r'check\(\s*"(M[0-9]+)"', smoke)) - set(ids)
+    overlap = set(ids) & set(regression)
+    if overlap:
+        errs.append(f"이번 차수 must_work id가 이전 차수와 겹침: {', '.join(sorted(overlap))} — 번호를 이어서 쓰세요")
+    for i in regression:
+        if not re.search(rf'check\(\s*"{re.escape(str(i))}"', smoke):
+            errs.append(f'tests/smoke.gd에서 이전 차수 검사 check("{i}", ...)가 사라짐(회귀 검사는 지우지 않는다)')
+    extra = set(re.findall(r'check\(\s*"(M[0-9]+)"', smoke)) - set(ids) - set(regression)
     if extra:
-        errs.append(f"tests/smoke.gd에 must_work에 없는 id: {', '.join(sorted(extra))}")
+        errs.append(f"tests/smoke.gd에 어느 차수 must_work에도 없는 id: {', '.join(sorted(extra))}")
     if not re.search(r'"SMOKE[ %]', smoke) or "PASS" not in smoke or "quit(" not in smoke:
         errs.append('tests/smoke.gd는 마지막에 "SMOKE PASS"를 출력하고 quit(0|1) 해야 함')
 
@@ -171,6 +204,7 @@ def main():
     ap.add_argument("--stage", choices=("design", "plan"), required=True)
     ap.add_argument("--sim", choices=("passed", "skipped"))
     ap.add_argument("--godot")
+    ap.add_argument("--milestone", type=int, default=1)
     a = ap.parse_args()
     game = os.path.abspath(a.game)
     errs = []
@@ -178,9 +212,9 @@ def main():
     if a.stage == "design":
         if not a.sim:
             sys.exit("--stage design 에는 --sim passed|skipped 가 필요합니다")
-        check_design(game, a.sim, errs)
+        check_design(game, a.sim, errs, a.milestone)
     else:
-        digest = check_plan(game, a.godot, errs)
+        digest = check_plan(game, a.godot, errs, a.milestone)
 
     name = os.path.basename(game)
     if errs:
