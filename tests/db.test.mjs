@@ -101,7 +101,22 @@ ok((await q("select * from claim('planner','p0')")).length === 0, "디자인 끝
 await q("select submit_design($1,'d1','abc1234','메아리로 싸우는 전술. 시뮬레이션: 메아리 없이는 6레벨 중 0개 클리어','passed')", [g2]);
 await q("select submit_design($1,'d2','abc1235','요약','skipped')", [g1]);
 let dg = (await q("select stage, design_commit, design_version, sim_status from games where id=$1", [g2]))[0];
-ok(dg.stage === "designed" && dg.design_commit === "abc1234" && dg.design_version === 1 && dg.sim_status === "passed", "디자인 → designed");
+ok(dg.stage === "proposed" && dg.design_commit === "abc1234" && dg.design_version === 1 && dg.sim_status === "passed", "디자인 → proposed(빌드 결재 대기)");
+// 빌드 결재: 대표가 눌러야 기획으로 넘어간다
+ok((await q("select * from claim('planner','p0')")).length === 0, "결재 전에는 기획실이 가져가지 못함");
+ok(await err("select ceo_design($1,'maybe')", [g2]), "빌드 결재 형식 거절");
+ok(await err("select ceo_design($1,'redo')", [g2]), "설계 다시는 메모 없이 거절");
+await q("select ceo_design($1,'redo','화면이 시험판 같다')", [g1]);
+let sb0 = (await q("select stage, starred, fix_notes from games where id=$1", [g1]))[0];
+ok(sb0.stage === "idea" && sb0.starred && sb0.fix_notes.includes("화면이 시험판 같다"), "설계 다시 → idea, 메모가 디자인실로");
+await q("select * from claim('designer','d2b')");
+await q("select submit_design($1,'d2b','abc1236','요약 v2','skipped')", [g1]);
+await q("select ceo_design($1,'go')", [g1]);
+await q("update games set starred = false where id=$1", [g1]);   // 아래 검사의 순서(★ 먼저)를 그대로 두려고 되돌린다
+await q("select ceo_design($1,'go','문을 크게')", [g2]);
+dg = (await q("select stage, fix_notes from games where id=$1", [g2]))[0];
+ok(dg.stage === "designed" && dg.fix_notes.includes("문을 크게"), "만든다 → designed, 메모가 기획실로");
+ok(await err("select ceo_design($1,'go')", [g2]), "결재 대기가 아니면 거절");
 
 // 기획: 디자인 끝난 것만, ★ 먼저
 const c1 = await q("select * from claim('planner','p1')");
@@ -253,6 +268,7 @@ sb = (await q("select stage, bounces from games where id=$1", [g1]))[0];
 ok(sb.stage === "idea" && sb.bounces === 2, "기획실 → 디자인실 반송");
 await q("select * from claim('designer','d5')");
 await q("select submit_design($1,'d5','abc9999','수정본','passed')", [g1]);
+await q("select ceo_design($1,'go')", [g1]);
 await q("select * from claim('planner','p6')");
 await q("select send_back($1,'p6','designer','여전히 모순')", [g1]);
 ok((await stage(g1)).stage === "held", "3번째 반송 → held");

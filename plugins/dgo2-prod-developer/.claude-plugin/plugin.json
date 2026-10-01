@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "dgo2-prod-developer",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "단비의 게임회사2 프로덕션 개발실: 다음 차수를 기존 게임 위에 만들고 회귀 검사까지 통과시킨다.",
   "author": {
     "name": "danbi-game-office-2"

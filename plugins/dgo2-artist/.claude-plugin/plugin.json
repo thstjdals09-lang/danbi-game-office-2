@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "dgo2-artist",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "단비의 게임회사2 아트실: 검수를 통과한 게임의 핵심 화면을 아트 방향 3안으로 그려 진열장에 올린다.",
   "author": {
     "name": "danbi-game-office-2"

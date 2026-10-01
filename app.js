@@ -143,13 +143,13 @@
   ];
   // 단계 이름과 모양. [표시 이름, 모양]
   var STAGE_LABEL = {
-    idea: ["디자인 대기", "wait"], designing: ["디자인 중", ""], designed: ["기획 대기", "wait"], planning: ["기획 중", ""],
+    idea: ["디자인 대기", "wait"], designing: ["디자인 중", ""], proposed: ["빌드 결재 대기", "warn"], designed: ["기획 대기", "wait"], planning: ["기획 중", ""],
     ready: ["빌드 대기", "wait"], building: ["빌드 중", ""], qa: ["검수 대기", "wait"],
     playtest: ["플레이 대기", "warn"], kept: ["합격 · 다음 차수 대기", "done"], held: ["판단 필요", "warn"], dropped: ["버림", "off"],
     done: ["완료", "done"]
   };
   // 진행 점 6칸: 디자인 · 기획 · 빌드 · 검수 · 플레이 · 합격
-  var STEP_OF = { idea: 0, designing: 0, designed: 1, planning: 1, ready: 2, building: 2, qa: 3, playtest: 4, kept: 5, done: 5 };
+  var STEP_OF = { idea: 0, designing: 0, proposed: 1, designed: 1, planning: 1, ready: 2, building: 2, qa: 3, playtest: 4, kept: 5, done: 5 };
   var WIP_STAGES = ["designing", "designed", "planning", "ready", "building", "qa"];
   // 문서 탭. 차수 2 이상이면 차수마다 프로덕션 설계·기획 문서가 붙는다(최신 차수가 앞).
   function docsOf(g) {
@@ -253,7 +253,7 @@
   }
 
   function renderNav() {
-    var todo = count(["playtest", "held"]) + pendingDecisions().length;
+    var todo = count(["playtest", "held", "proposed"]) + pendingDecisions().length;
     var badges = { home: todo, games: count(WIP_STAGES.concat(["playtest", "kept", "done"])), ideas: count(["idea"]), factory: null };
     $("nav").innerHTML = VIEWS.map(function (v) {
       var n = badges[v.id];
@@ -267,16 +267,34 @@
   function renderHome() {
     var play = byStage("playtest").sort(queueOrder);
     var held = byStage("held").sort(queueOrder);
+    var props = byStage("proposed").sort(queueOrder);
     var wip = count(WIP_STAGES);
     var asks = pendingDecisions();
     var tiles = [
       { n: play.length, l: "플레이할 게임", h: "해 보고 판정", go: "home", attn: play.length > 0 },
+      { n: props.length, l: "빌드 결재", h: "설계를 보고 만들지 정하기", go: "home", attn: props.length > 0 },
       { n: asks.length + held.length, l: "결정·판단 필요", h: "부서가 올린 건", go: "home", attn: asks.length + held.length > 0 },
       { n: wip, l: "제작 중", h: "디자인 → 검수", go: "games", attn: false }
     ];
     $("tiles").innerHTML = tiles.map(function (t) {
       return '<button class="tile' + (t.attn ? " attn" : t.n ? "" : " zero") + '" type="button" data-go="' + t.go + '"' + (t.go === "games" ? ' data-filter="wip"' : "") +
         '><span class="n num">' + t.n + '</span><span class="l">' + esc(t.l) + '</span><span class="h">' + esc(t.h) + "</span></button>";
+    }).join("");
+
+    // 빌드 결재: 설계 요약과 주 화면 시안을 보고, 만들지 정한다(빌드가 가장 비싼 단계라 그 앞에서 거른다)
+    $("propSec").hidden = !props.length;
+    $("props").innerHTML = props.map(function (g) {
+      var mock = "https://raw.githubusercontent.com/" + CFG.repo + "/main/games/" + encodeURIComponent(g.slug) + "/design/mock/main.png";
+      return '<article class="prop"><a class="mock" href="' + esc(mock) + '" target="_blank" rel="noopener"><img loading="lazy" alt="주 화면 시안" src="' + esc(mock) +
+        '" onerror="this.parentNode.classList.add(&quot;none&quot;)"><span class="ph">화면 시안 없음</span></a>' +
+        '<div class="pbody"><div class="card-title">' + esc(g.title) + '<span class="mono">' + esc(versionText(g)) + "</span></div>" +
+        '<div class="p">' + esc(g.pitch) + "</div>" +
+        (g.design_summary ? '<div class="summary">' + esc(g.design_summary) + "</div>" : "") +
+        '<div class="acts">' + docButton(g) +
+        '<button class="btn go" type="button" data-dsn="go" data-id="' + g.id + '"' + dis() + ">이대로 만든다</button>" +
+        '<button class="btn" type="button" data-dsn="redo" data-id="' + g.id + '"' + dis() + ">설계 다시</button>" +
+        '<button class="btn ghost" type="button" data-dsn="hold" data-id="' + g.id + '"' + dis() + ">보류</button>" +
+        '<button class="btn bad" type="button" data-dsn="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div></div></article>";
     }).join("");
 
     // 플레이테스트: 라이브러리와 같은 카드. 눌러서 게임 상세에서 플레이하고 판정한다
@@ -306,9 +324,10 @@
 
   // ---------------------------------------------------------------- 게임 (라이브러리 → 상세)
 
-  var LIB_STAGES = WIP_STAGES.concat(["playtest", "kept", "held", "dropped"]);
+  var LIB_STAGES = WIP_STAGES.concat(["proposed", "playtest", "kept", "held", "dropped"]);
   var GAME_FILTERS = [
-    { id: "all", label: "전체", stages: WIP_STAGES.concat(["playtest", "kept", "done"]) },
+    { id: "all", label: "전체", stages: WIP_STAGES.concat(["proposed", "playtest", "kept", "done"]) },
+    { id: "proposed", label: "빌드 결재", stages: ["proposed"] },
     { id: "playtest", label: "플레이 대기", stages: ["playtest"] },
     { id: "wip", label: "제작 중", stages: WIP_STAGES },
     { id: "kept", label: "합격·완료", stages: ["kept", "done"] },
@@ -685,6 +704,19 @@
       await act("ceo_star", { p_game: sg.id, p_starred: !sg.starred }, sg.starred ? "별표 해제" : "우선 처리로 지정");
       return;
     }
+    if (d.dsn && g) {
+      var dnote = null;
+      if (d.dsn === "redo") {
+        dnote = await askNote(g.title + " · 설계 다시", "무엇이 아쉬운지 적어 주세요. 디자인실이 이 메모를 읽고 새 판을 만들어요.", true);
+        if (!dnote) return;
+      } else if (d.dsn === "go") {
+        dnote = await askNote(g.title + " · 이대로 만든다", "만들 때 꼭 지켰으면 하는 것이 있으면 적어 주세요(선택). 기획실이 가장 먼저 읽어요.", false);
+        if (dnote === null) return;
+      }
+      var dmsg = { go: "만들기로 함", redo: "설계 다시 요청", hold: "보류", drop: "버림" };
+      await act("ceo_design", { p_game: g.id, p_decision: d.dsn, p_note: dnote || null }, g.title + " · " + dmsg[d.dsn]);
+      return;
+    }
     if (d.tri && g) {
       var labels = { go: "다시 진행", hold: "보류", drop: "버림" };
       await act("ceo_triage", { p_game: g.id, p_decision: d.tri, p_note: null }, g.title + " · " + labels[d.tri]);
@@ -760,6 +792,7 @@
       return Object.assign({ id: id, slug: slug, title: title, pitch: pitch, core_verb: verb, fun_hypothesis: fun, stage: stage, attempt: 0, starred: false, spec: { orientation: "portrait" }, fix_notes: null, created_at: t(3000), stage_changed_at: t(600) }, extra || {});
     };
     var games = [
+      G("gp", "backdraft-crew", "불길 속으로", "문을 열면 숨죽은 불이 되살아나는 건물에서 사람을 업어 나온다.", "문 여닫기", "이 문을 열어도 되는가", "proposed", { stage_changed_at: t(5), design_version: 1, design_summary: "소방관 한 명을 따라가는 화면. 닫힌 방 안은 보이지 않고 문이 말해 준다.\n핵심 판단: 어느 문을 열고 닫을까 / 물을 어디에 쓸까.\n시뮬레이션: 문 판단이 구조율을 가른다." }),
       G("g1", "first-lantern", "First Lantern", "꺼지기 전에 등불을 눌러 밝힌다.", "탭", "점점 빨라지는 불빛을 놓치지 않으려는 긴장감", "playtest", { attempt: 1, stage_changed_at: t(40), design_version: 1, spec_version: 1, design_summary: "한 손가락 타이밍 게임.\n핵심 판단: 어느 등불부터 누를까." }),
       G("g2", "night-bus-driver", "밤버스 기사", "졸린 승객을 정류장에 맞춰 깨운다.", "길게 누르기", "타이밍을 재는 손맛", "building", { attempt: 1, lease_until: new Date(now + 30 * 60000).toISOString() }),
       G("g3", "moon-crane", "달 크레인", "흔들리는 달 조각을 쌓아 탑을 만든다.", "드래그", "무너질 듯 말 듯한 아슬아슬함", "ready", { starred: true }),
@@ -797,6 +830,7 @@
     var g = state.games.find(function (x) { return x.id === a.p_game; });
     if (!g) return;
     if (fn === "ceo_finish") g.stage = "done";
+    if (fn === "ceo_design") g.stage = { go: "designed", redo: "idea", hold: "held", drop: "dropped" }[a.p_decision];
     if (fn === "ceo_star") g.starred = a.p_starred;
     if (fn === "ceo_pick_art") { g.art_pick = a.p_pick; return; }
     if (fn === "ceo_triage") { if (a.p_decision === "go" && g.stage === "idea") g.starred = true; else g.stage = a.p_decision === "go" ? "ready" : a.p_decision === "hold" ? "held" : "dropped"; }
