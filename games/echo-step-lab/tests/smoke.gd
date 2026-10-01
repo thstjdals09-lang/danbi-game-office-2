@@ -650,7 +650,8 @@ func m32_shake_and_input() -> void:
 	check("M32", shake_is(4.0) and game.player == V(4, 5) and game.turn == 4, "처치 직후: 화면이 흔들리는 중")
 	game.debug_swipe(Vector2(270, 820), Vector2(300, 820))
 	check("M32", game.player == V(5, 5) and game.turn == 5 and game.last_action == "R", "흔들리는 동안의 30px 스와이프도 평소처럼 이동")
-	game.debug_swipe(Vector2(270, 820), Vector2(290, 820))
+	# 짧은 밀기는 탭으로 처리된다. 버튼이 없는 자리(처치 줄과 버튼 사이)에서 한다 — (270,820)은 되감기 버튼 위다
+	game.debug_swipe(Vector2(270, 672), Vector2(290, 672))
 	check("M32", game.turn == 5, "24px 미만은 여전히 무시(흔들림이 입력 좌표를 바꾸지 않는다)")
 	game.debug_press("wait")
 	check("M32", game.turn == 6 and game.last_action == "W" and shake_is(0.0), "대기 버튼도 정상, 흔들림 없는 턴은 last_shake 0")
