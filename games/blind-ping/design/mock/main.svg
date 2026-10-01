@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960" width="540" height="960">
+  <defs>
+    <radialGradient id="lamp" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#ffe9a8" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#ffd166" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shiplight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff3c4" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#fff3c4" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="world"><rect x="0" y="20" width="540" height="810"/></clipPath>
+    <clipPath id="wave"><circle cx="225" cy="425" r="262"/></clipPath>
+    <pattern id="hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="14" fill="#ff4d4d" opacity="0.35"/>
+    </pattern>
+    <g id="walls">
+      <!-- 왼쪽 벽 (1열, 0~5행) -->
+      <polygon points="90,20 176,20 168,70 182,120 170,190 184,250 172,330 180,400 168,470 182,530 176,560 90,560"/>
+      <!-- 왼쪽 벽 아래 (1열, 7~8행) -->
+      <polygon points="90,650 178,650 170,700 184,760 172,830 90,830"/>
+      <!-- 보물 굴 위아래 (0열 5행, 7행) -->
+      <polygon points="0,470 90,470 90,560 60,552 30,562 0,554"/>
+      <polygon points="0,650 28,658 62,648 90,654 90,740 0,740"/>
+      <!-- 오른쪽 벽 (4열 0~1행) -->
+      <polygon points="364,20 450,20 450,200 360,200 372,150 358,90"/>
+      <!-- 오른쪽 벽 (4열 3~4행) -->
+      <polygon points="362,290 450,290 450,470 366,470 356,400 370,340"/>
+      <!-- 오른쪽 굴 막힌 끝 (5열 2행) -->
+      <polygon points="450,200 540,200 540,290 450,290 458,245"/>
+    </g>
+  </defs>
+
+  <!-- 모르는 바다: 소리가 닿은 적 없는 곳 -->
+  <rect width="540" height="960" fill="#03060b"/>
+
+  <g clip-path="url(#world)">
+    <!-- 해도: 한 번 소리가 닿은 물(남는다) -->
+    <g fill="#0b1d30">
+      <rect x="180" y="20" width="180" height="810"/>
+      <rect x="360" y="200" width="90" height="90"/>
+      <rect x="0" y="560" width="180" height="90"/>
+    </g>
+    <!-- 해도 가장자리(아는 것과 모르는 것의 경계) -->
+    <rect x="360" y="470" width="26" height="360" fill="#0b1d30" opacity="0.5"/>
+    <rect x="386" y="470" width="22" height="360" fill="#0b1d30" opacity="0.22"/>
+
+    <!-- 모선 불빛 (출구) -->
+    <polygon points="210,62 330,62 400,250 140,250" fill="url(#shiplight)"/>
+    <path d="M150 20 H390 L372 56 Q270 72 168 56 Z" fill="#2b3a4a" stroke="#8fa5b8" stroke-width="2"/>
+    <rect x="262" y="56" width="16" height="12" fill="#fff3c4"/>
+    <path d="M270 68 V104 q0 12 -10 12" fill="none" stroke="#cdd8e2" stroke-width="3"/>
+
+    <!-- 바위: 해도에 남은 윤곽 -->
+    <use href="#walls" fill="#0d151c" stroke="#1f4a55" stroke-width="2.5" stroke-linejoin="round"/>
+
+    <!-- 유령 얼룩: 3턴 전에 본 순찰 상어가 "지금 있을 수 있는 칸" -->
+    <g fill="#ffb347" opacity="0.16">
+      <rect x="0" y="560" width="90" height="90"/>
+      <rect x="90" y="560" width="90" height="90"/>
+      <rect x="180" y="560" width="90" height="90"/>
+      <rect x="270" y="560" width="90" height="90"/>
+      <rect x="180" y="470" width="90" height="90"/>
+      <rect x="180" y="650" width="90" height="90"/>
+    </g>
+    <path d="M0 560 H180 V470 H270 V560 H360 V650 H270 V740 H180 V650 H0" fill="none" stroke="#ffb347" stroke-width="2" stroke-dasharray="7 7" opacity="0.7"/>
+    <!-- 마지막으로 본 자리의 유령(흐려진 실루엣) -->
+    <g transform="translate(135,605)" opacity="0.4" fill="none" stroke="#ffb347" stroke-width="2.5">
+      <path d="M-40 0 Q-10 -24 30 -4 L44 -16 L40 0 L44 14 L30 4 Q-10 22 -40 0 Z"/>
+      <path d="M-6 -15 L4 -30 L12 -11"/>
+    </g>
+    <!-- 보물 굴의 오래된 소리 자국(윈치 소리) -->
+    <g transform="translate(45,605)" fill="none" stroke="#ff4d4d" opacity="0.35" stroke-width="2">
+      <circle r="10"/><circle r="20" stroke-dasharray="4 6"/>
+    </g>
+
+    <!-- 잠든 아귀: 자는 것은 움직이지 않으니 또렷이 남는다 -->
+    <g transform="translate(315,785)">
+      <ellipse rx="38" ry="24" fill="#16303d" stroke="#3d8798" stroke-width="2.5"/>
+      <path d="M-38 0 L-56 -14 L-56 14 Z" fill="#16303d" stroke="#3d8798" stroke-width="2.5"/>
+      <path d="M14 -4 q8 6 16 0" fill="none" stroke="#3d8798" stroke-width="2.5"/>
+      <path d="M10 -22 q14 -22 30 -10" fill="none" stroke="#3d8798" stroke-width="2.5"/>
+      <circle cx="40" cy="-32" r="5" fill="#3d8798"/>
+    </g>
+
+    <!-- 핑이 부른 길: 깨어난 아귀가 올 칸이 내 자리까지 깔린다 -->
+    <rect x="270" y="290" width="90" height="180" fill="url(#hatch)"/>
+    <rect x="180" y="380" width="90" height="90" fill="url(#hatch)"/>
+    <g fill="none" stroke="#ff6b6b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+      <path d="M303 318 L315 332 L327 318"/>
+      <path d="M303 360 L315 374 L327 360"/>
+      <path d="M318 413 L304 425 L318 437"/>
+    </g>
+
+    <!-- 음파: 방금 쏜 작은 핑 -->
+    <g fill="none" stroke="#6ff3ff">
+      <circle cx="225" cy="425" r="262" stroke-width="5" opacity="0.9"/>
+      <circle cx="225" cy="425" r="236" stroke-width="2" opacity="0.45"/>
+      <circle cx="225" cy="425" r="170" stroke-width="1.5" opacity="0.22"/>
+    </g>
+    <circle cx="225" cy="425" r="262" fill="#6ff3ff" opacity="0.05"/>
+    <!-- 파동이 지난 바위는 밝게 그어진다 -->
+    <g clip-path="url(#wave)">
+      <use href="#walls" fill="none" stroke="#6ff3ff" stroke-width="3.5" stroke-linejoin="round" opacity="0.95"/>
+    </g>
+
+    <!-- 깨어난 아귀: 파동에 드러난 순간 -->
+    <g transform="translate(315,245) rotate(18)">
+      <ellipse rx="40" ry="27" fill="#c9f6ff" stroke="#6ff3ff" stroke-width="3"/>
+      <path d="M36 2 L58 -14 L58 18 Z" fill="#c9f6ff" stroke="#6ff3ff" stroke-width="3"/>
+      <path d="M-40 4 L-22 -2 L-22 16 Z" fill="#03060b"/>
+      <path d="M-36 6 l5 7 l5 -7 l5 7 l5 -7" fill="none" stroke="#c9f6ff" stroke-width="2"/>
+      <circle cx="-12" cy="-9" r="7" fill="#ff3b3b"/>
+      <path d="M-4 -26 q-22 -24 -40 -6" fill="none" stroke="#6ff3ff" stroke-width="3"/>
+      <circle cx="-46" cy="-30" r="8" fill="#fff7a8"/>
+      <circle cx="-46" cy="-30" r="15" fill="#fff7a8" opacity="0.25"/>
+    </g>
+
+    <!-- 잠수정 등불(평소에 보이는 것은 이만큼뿐) -->
+    <circle cx="225" cy="425" r="135" fill="url(#lamp)"/>
+    <!-- 방금 낸 소리 자국: 적이 향하는 칸 -->
+    <circle cx="225" cy="425" r="43" fill="none" stroke="#ff4d4d" stroke-width="3" stroke-dasharray="5 6"/>
+
+    <!-- 건진 보물: 윈치에 매달려 있다 -->
+    <path d="M225 448 V482" stroke="#cdd8e2" stroke-width="2.5"/>
+    <g transform="translate(225,498)">
+      <rect x="-19" y="-14" width="38" height="28" rx="4" fill="#8a5a2b" stroke="#ffd166" stroke-width="2.5"/>
+      <path d="M-19 -3 H19" stroke="#ffd166" stroke-width="2.5"/>
+      <rect x="-4" y="-7" width="8" height="9" fill="#ffd166"/>
+    </g>
+
+    <!-- 잠수정(주인공): 폭 112px = 짧은 변의 21% -->
+    <g transform="translate(225,425)">
+      <path d="M-50 -6 L-66 -20 V20 L-50 6 Z" fill="#b9861f"/>
+      <ellipse rx="52" ry="25" fill="#f2b632" stroke="#fff1c2" stroke-width="2.5"/>
+      <rect x="-14" y="-40" width="30" height="20" rx="5" fill="#f2b632" stroke="#fff1c2" stroke-width="2.5"/>
+      <path d="M2 -40 V-52 H12" fill="none" stroke="#fff1c2" stroke-width="3"/>
+      <circle cx="18" cy="-1" r="12" fill="#bff3ff" stroke="#0b1d30" stroke-width="3"/>
+      <circle cx="-14" cy="-1" r="7" fill="#bff3ff" stroke="#0b1d30" stroke-width="3"/>
+      <circle cx="50" cy="4" r="6" fill="#fff7a8"/>
+    </g>
+
+    <!-- 듣기: 아래쪽에서 무언가 움직이는 소리(방향만) -->
+    <g fill="none" stroke="#ffb347" stroke-width="3" stroke-linecap="round" opacity="0.9">
+      <path d="M205 545 q20 12 40 0"/>
+      <path d="M197 558 q28 17 56 0" opacity="0.65"/>
+      <path d="M189 571 q36 22 72 0" opacity="0.35"/>
+    </g>
+  </g>
+
+  <!-- 작은 해도(전체 상황): 6×14칸 -->
+  <g transform="translate(466,40)">
+    <rect x="-6" y="-6" width="72" height="152" rx="6" fill="#03060b" stroke="#1f4a55" stroke-width="2"/>
+    <g fill="#12314a">
+      <rect x="20" y="0" width="20" height="90"/>
+      <rect x="40" y="20" width="10" height="10"/>
+      <rect x="0" y="60" width="20" height="10"/>
+    </g>
+    <rect x="16" y="-3" width="28" height="5" fill="#fff3c4"/>
+    <rect x="21" y="41" width="8" height="8" fill="#f2b632"/>
+    <rect x="31" y="21" width="8" height="8" fill="#ff4d4d"/>
+    <rect x="0" y="50" width="40" height="30" fill="#ffb347" opacity="0.25"/>
+    <rect x="31" y="81" width="8" height="8" fill="#3d8798"/>
+    <path d="M0 90 H60" stroke="#1f4a55" stroke-dasharray="3 3"/>
+  </g>
+
+  <!-- 엄지 옆: 공기통(가장 큰 계기). 한 턴에 한 눈금 -->
+  <rect x="0" y="850" width="540" height="110" fill="#070d15"/>
+  <g transform="translate(36,878)">
+    <rect x="-16" y="16" width="20" height="24" rx="4" fill="#5d7183"/>
+    <rect x="0" y="0" width="372" height="56" rx="28" fill="#0b1d30" stroke="#8fa5b8" stroke-width="3"/>
+    <rect x="6" y="6" width="198" height="44" rx="22" fill="#6ff3ff" opacity="0.85"/>
+    <g fill="#eaffff">
+      <circle cx="40" cy="20" r="6"/><circle cx="88" cy="36" r="4"/><circle cx="130" cy="18" r="5"/><circle cx="176" cy="34" r="7"/>
+    </g>
+    <g stroke="#8fa5b8" stroke-width="2" opacity="0.7">
+      <path d="M93 0 v10 M186 0 v10 M279 0 v10"/>
+    </g>
+  </g>
+  <!-- 해역 깊이: 세 해역 중 둘째 -->
+  <g transform="translate(446,906)">
+    <circle cx="0" cy="0" r="9" fill="#3d8798"/>
+    <circle cx="30" cy="0" r="12" fill="#6ff3ff"/>
+    <circle cx="62" cy="0" r="9" fill="none" stroke="#3d8798" stroke-width="2.5"/>
+  </g>
+</svg>
