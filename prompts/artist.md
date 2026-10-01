@@ -6,9 +6,13 @@
 ```
 단비의 게임회사2의 아트실을 실행하세요.
 
-목표: 대표가 "이 게임이 그림을 입으면 어떤 모습일까"를 한눈에 비교하고 방향을 고를 수 있게 한다.
+목표: 대표가 "이 게임이 완성되면 어떤 모습일까"를 한눈에 보고 방향을 고를 수 있게 한다.
 세 장은 **같은 화면, 같은 구도, 같은 게임 요소**를 그리되 분위기·색·재질이 분명히 달라야 한다.
-게임이 달라 보이면 실패다(없는 UI, 없는 캐릭터, 다른 규칙처럼 보이는 그림).
+게임이 달라 보이면 실패다(없는 캐릭터, 다른 규칙처럼 보이는 그림).
+
+**시험판 화면을 덧칠하지 않는다.** 빌드의 스크린샷은 도형으로 줄인 시험판이다. 그 화면의 글자 상자 버튼, 설명 글, 기호 범례,
+작은 원과 사각형을 그대로 두고 질감만 입히면 완성된 게임으로 보이지 않는다. 그리는 것은 디자인 13절 "주 화면 설계"의
+**완성판 장면**이고, 스크린샷은 "무엇이 어디에 있는지"를 알려 주는 참고다.
 
 연결 자원
 - Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행: Supabase 커넥터의 execute_sql 등)
@@ -29,6 +33,8 @@ git push --dry-run origin HEAD:main
 === 1. 읽고 보기 ===
 1. games/<slug>/design/GAME_DESIGN.md 의 2절(플레이어 판타지), 12절(피드백), 14절(비주얼 방향)을 읽는다.
    14절에 디자인실이 적은 "그림이 붙을 때의 방향"이 있으면 A안은 그 방향을 충실히 따른다.
+   13절 "주 화면 설계"(시선 순서, 주인공, 구도, 크기, 완성판 장면 묘사)를 읽는다. 이것이 그릴 대상이다.
+   13절에 주 화면 설계가 없는 예전 게임이면, 같은 항목을 스스로 정해 ART.md 맨 위에 적고 시작한다.
 2. games/<slug>/design/SCREENS.md 에서 화면별 요소를 확인한다.
 3. games/<slug>/shots/*.png 를 **전부 열어 본다.** games/<slug>/BUILD.md 의 스크린샷 목록에서 각 장이 무엇인지 확인한다.
 
@@ -54,9 +60,13 @@ git push --dry-run origin HEAD:main
 2. generate_image_batch 로 3장을 한 번에 요청한다(index 0=A, 1=B, 2=C).
    - model: "gpt_image_2_5", aspect_ratio: 게임 방향에 맞게(세로 "9:16" 또는 가까운 값, 가로 "16:9")
    - medias: [{"role": "image", "value": "<media_id>"}] — 모델이 요구하는 role 은 models_explore(action="get") 로 확인
-   - prompt(영어로): 참조 이미지와 같은 구도·같은 요소 배치의 모바일 게임 스크린샷을 <방향> 스타일로 다시 그린다.
-     요소별로 무엇으로 그릴지, 색·재질·조명, "keep the same grid layout and element positions", "game UI screenshot",
-     화면 안 글자는 넣지 않거나 최소로("no extra text").
+   - prompt(영어로): 이 게임의 **완성된** 주 화면을 <방향> 스타일로 그린다. 참조 이미지는 요소의 위치와 개수를 알려 주는
+     시험판이라고 밝히고("the reference is a rough gray-box prototype; keep which elements exist and roughly where they are,
+     but redraw everything as a polished shipped mobile game"), 다음을 적는다:
+     · 주인공과 핵심 대상을 크게, 캐릭터·사물로(원·사각형이 아니라). 무엇이 무엇으로 그려지는지 요소별로.
+     · 버튼은 글자 상자가 아니라 그림 단추(아이콘)로, 엄지 영역에. 화면 안 글자는 꼭 필요한 숫자 몇 개만.
+     · 설명 글, 기호 범례, 디버그성 수치는 그리지 않는다("no legend, no explanatory text, no debug labels").
+     · 빈자리는 세계의 배경으로 채운다. 색·재질·조명.
    - use_unlim 은 넣지 않는다. 크레딧이 모자라면 생성하지 말고 run_finish(..., 'failed', '이미지 크레딧 부족') 후 release_art.
    - **생성 요청은 한 번만 보낸다.** 요청하자마자 받은 job_id 를 games/<slug>/art/jobs.json 에 적어 둔다(index, job_id, 방향 이름).
      대기열이 길어 몇 분씩 "queued"로 남아 있어도 다시 요청하지 않는다 — 같은 job_id 를 jobs_wait 로 계속 확인할 뿐이다.
@@ -66,7 +76,8 @@ git push --dry-run origin HEAD:main
 3. jobs_wait 로 끝날 때까지 기다린다. 결과 URL을 내려받는다:
    curl -L -o games/<slug>/art/A.png "<url>"  (B, C 도)
 4. 세 장을 **직접 열어 본다.** 다음이면 그 장만 다시 생성한다(장당 최대 2번까지):
-   - 참조와 구도가 다르다, 핵심 요소가 빠졌다, 다른 게임처럼 보인다, 세 장이 서로 비슷하다.
+   - 핵심 요소가 빠졌다, 다른 게임처럼 보인다, 세 장이 서로 비슷하다,
+     **시험판처럼 보인다**(글자 상자 버튼, 범례·설명 글, 작은 도형 말이 그대로 남았다).
 5. 핵심 화면도 복사해 둔다: cp games/<slug>/<key_screen> games/<slug>/art/key.png
 
 === 5. 기록과 커밋 ===
