@@ -1,6 +1,7 @@
 extends SceneTree
-## 화면 캡처(빌드실 작성). SCREENS.md 의 화면 3개와 핵심 순간을 찍는다.
-## 실행: python tools/screenshot.py games/echo-step-tactics  →  shots/*.png
+## 화면 캡처(빌드실·개발실 작성). SCREENS.md 의 화면 3개와 핵심 순간을 찍는다.
+## 01~13: 1차 / 14~22: 2차(칼 하나, 방패병, 밀치기, 으깨기, 튕김, 층 클리어 발자국)
+## 실행: python tools/screenshot.py games/<slug>  →  shots/*.png
 
 const Content := preload("res://scripts/content.gd")
 
@@ -84,5 +85,52 @@ func _process(_delta: float) -> bool:
 			acts("SU W W W")
 		630:
 			shot("13-result-win")                 # 결과(승리)
+			# ---- 2차 ----
+			game.debug_load_floors([Content.FLOORS[3]])
+		690:
+			shot("14-floor4-shield")              # 4층 시작: 방패병(막대 = 바라보는 쪽, 체력 점 2), 플레이어의 칼 선
+			acts("U SU")
+		750:
+			shot("15-sword-out")                  # 칼 없음: 버튼 "칼 ③", 굵은 발자국, 플레이어 칼 선 없음, 안내 문구
+			game.debug_press("slash")
+		756:
+			shot("16-sword-press-flash")          # 칼 없이 베기를 누름: 버튼 흔들림, 칼이 실린 발자국 깜빡임
+			acts("W W W")
+		820:
+			shot("17-sword-back")                 # 칼이 돌아옴: 버튼 "베기", 칼 선 다시
+			one_floor([], V(3, 3), [["S", V(3, 6)], ["W", V(0, 0)]])
+			acts("D R W")
+		880:
+			shot("18-shield-faces-me")            # 방패병이 오른쪽(나)을 봄 + 치기 의도, 다음 턴 메아리가 (3,4)를 밟을 예정
+			acts("U")
+		899:
+			shot("19-push")                       # 옆에서 밟힘: "밟기!", 한 칸 밀림, 체력 점 1
+		940:
+			shot("19b-push-after")                # 밀린 뒤의 정지 화면
+			one_floor([V(2, 3)], V(3, 3), [["S", V(3, 6)], ["W", V(6, 0)]])
+			acts("R L U U")
+		1000:
+			acts("U")
+		1026:
+			shot("20-crush")                      # 벽에 막혀 으깨짐: 납작, "으깨기!"
+		1060:
+			one_floor([], V(3, 6), [["S", V(3, 3)], ["W", V(0, 0)]])
+			acts("SU W L")
+		1120:
+			acts("W")
+		1140:
+			shot("21-deflect")                    # 정면 베기: 방패 번쩍, "튕김"
+		1180:
+			game.debug_load_floors([{"walls": [], "start": V(3, 6), "enemies": [["W", V(3, 2)]], "spawns": []}, Content.FLOORS[3]])
+			acts("U D R")
+		1240:
+			acts("U")                             # 밟기 처치로 층 클리어
+		1272:
+			shot("22-floor-clear-glow")           # 층 클리어: 발자국이 빛나며 사라짐
+		1330:
+			game.debug_load_floors([{"walls": [], "start": V(3, 6), "enemies": [["S", V(3, 5)]], "spawns": []}])
+			acts("W W W W W")
+		1390:
+			shot("23-result-lose-shield")         # 패배 원인: 방패병의 치기, 처치 두 줄
 			quit(0)
 	return false

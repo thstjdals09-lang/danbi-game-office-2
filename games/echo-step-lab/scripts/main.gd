@@ -1,7 +1,7 @@
 extends Node2D
 ## 메아리 발자국 — 상태, 입력, 그리기, 연출.
 ## 규칙은 scripts/rules.gd 가 계산하고, 여기서는 그 결과(events)를 화면에 재생한다.
-## 기준: design/FIRST_BUILD.md (테스트 인터페이스), design/SCREENS.md (화면).
+## 기준: design/FIRST_BUILD.md + design/BUILD_2.md (테스트 인터페이스), design/SCREENS.md (화면).
 
 enum State { TITLE, PLAY, RESULT }
 
@@ -26,6 +26,8 @@ const T_SHAKE := 0.2
 const T_POPUP := 0.7
 const T_HURT := 0.3
 const T_BANNER := 0.8
+const T_FLASH := 0.3                     # 칼이 없을 때 베기를 누르면: 버튼 흔들림, 칼이 실린 발자국 깜빡임
+const T_GLOW := 0.5                      # 층 클리어: 발자국이 빛나며 사라짐
 
 const C_BG := Color("0b1220")
 const C_PANEL := Color("111c30")
@@ -39,13 +41,14 @@ const C_ENEMY := Color("f08a5d")
 const C_DANGER := Color("f3c86a")
 const C_HURT := Color("ff5d73")
 const C_GOOD := Color("55d6a8")
+const C_SHIELD := Color("ffe9c2")
 
-# ---------------------------------------------------------------- 테스트 인터페이스 (FIRST_BUILD.md)
+# ---------------------------------------------------------------- 테스트 인터페이스 (FIRST_BUILD.md, BUILD_2.md 추가분)
 
 var state: int = State.TITLE
 var floor_index := 0
-var floor_count := 3
-var kills := {"stomp": 0, "slash": 0, "friendly": 0}
+var floor_count := 5
+var kills := {"stomp": 0, "slash": 0, "friendly": 0, "crush": 0}
 var last_action := ""
 var result_won := false
 
@@ -73,6 +76,9 @@ var spawns_pending: int:
 var footprints: Array:
 	get:
 		return rules.footprints() if rules != null else []
+var sword_wait: int:
+	get:
+		return rules.sword_wait() if rules != null and state == State.PLAY else 0
 
 # ---------------------------------------------------------------- 내부 상태
 
@@ -93,6 +99,8 @@ var fragments: Array = []                # {"pos", "t0", "kind"}
 var ripples: Array = []                  # {"pos", "t0"}
 var hurt_t0 := -10.0
 var shake_t0 := -10.0
+var sword_flash_t0 := -10.0
+var glows: Array = []                    # {"pos", "t0"} 층 클리어 때 빛나며 사라지는 발자국
 var banner_t0 := -10.0
 var banner_text := ""
 var defeat_cause := ""
@@ -148,7 +156,11 @@ func _release(pos: Vector2) -> void:
 			var act := _gesture_action(press_pos, pos)
 			if act == "":
 				if BTN_SLASH.has_point(press_pos) and BTN_SLASH.has_point(pos):
-					slash_mode = not slash_mode
+					if sword_wait > 0:
+						slash_mode = false       # 칼이 없으면 켜지지 않는다(SCREENS.md 2차)
+						sword_flash_t0 = clock
+					else:
+						slash_mode = not slash_mode
 				elif BTN_WAIT.has_point(press_pos) and BTN_WAIT.has_point(pos):
 					_do_action("W")
 				return
@@ -176,7 +188,7 @@ func _start_run(run_floors: Array, names: Array) -> void:
 	floor_names = names
 	floor_count = floors.size()
 	floor_index = 0
-	kills = {"stomp": 0, "slash": 0, "friendly": 0}
+	kills = {"stomp": 0, "slash": 0, "friendly": 0, "crush": 0}
 	last_action = ""
 	result_won = false
 	defeat_cause = ""
@@ -186,6 +198,7 @@ func _start_run(run_floors: Array, names: Array) -> void:
 	popups.clear()
 	fragments.clear()
 	ripples.clear()
+	glows.clear()
 	_load_floor(0, Rules.HP_MAX)
 	state = State.PLAY
 	_show_banner()
@@ -208,7 +221,10 @@ func _do_action(act: String) -> bool:
 	if state != State.PLAY or rules == null:
 		return false
 	if not rules.can_act(act):
-		shake_t0 = clock
+		if Rules.is_slash(act) and rules.sword_wait() > 0:
+			sword_flash_t0 = clock       # 칼이 없다: 버튼이 흔들리고 칼이 실린 발자국이 깜빡인다
+		else:
+			shake_t0 = clock
 		return false
 	_finish_anim()
 	var snap := _snapshot()
@@ -219,6 +235,9 @@ func _do_action(act: String) -> bool:
 	match rules.outcome:
 		"clear":
 			reached_floor = floor_index + 1
+			# 층 클리어: 남아 있던 발자국이 빛나며 사라진다
+			for f in rules.footprints():
+				glows.append({"pos": _cell_rect(f["pos"]).position + Vector2(16, 16), "t0": clock + anim["t_enemy"]})
 			if floor_index + 1 >= floor_count:
 				result_won = true
 				state = State.RESULT
@@ -236,7 +255,7 @@ func _do_action(act: String) -> bool:
 				for e in events:
 					if e["type"] == "hurt":
 						by = e["by"]
-				defeat_cause = "%d턴, %s" % [rules.turn, "궁수의 화살" if by == "A" else "졸개의 치기"]
+				defeat_cause = "%d턴, %s" % [rules.turn, {"A": "궁수의 화살", "S": "방패병의 치기"}.get(by, "졸개의 치기")]
 	return true
 
 
@@ -261,9 +280,9 @@ func _snapshot() -> Dictionary:
 
 
 func _begin_anim(snap: Dictionary, events: Array) -> void:
-	var echo_kill := false
+	var echo_kill := false           # 메아리의 일격이 명중했는가(처치·밀치기·으깨기) → 히트스톱
 	for e in events:
-		if e["type"] == "kill" and e["src"] != "friendly":
+		if (e["type"] == "kill" and e["src"] != "friendly") or e["type"] == "push":
 			echo_kill = true
 	var t_echo := T_MOVE
 	var t_enemy := t_echo + T_ECHO + (T_STOP if echo_kill else 0.0)
@@ -277,8 +296,16 @@ func _begin_anim(snap: Dictionary, events: Array) -> void:
 				var friendly: bool = e["src"] == "friendly"
 				var at: float = clock + (t_enemy + T_ENEMY * 0.6 if friendly else t_echo + T_ECHO)
 				fragments.append({"pos": _cell_center(e["pos"]), "t0": at, "kind": e["kind"]})
-				var label := "오사!" if friendly else ("밟기!" if e["src"] == "stomp" else "베기!")
+				if e["src"] == "crush":
+					at = clock + t_enemy     # 으깨기: 막힌 쪽으로 밀리다 납작해진 뒤에 흩어진다
+					fragments[-1]["t0"] = at
+				var label: String = {"friendly": "오사!", "stomp": "밟기!", "slash": "베기!", "crush": "으깨기!"}[e["src"]]
 				popups.append({"text": label, "pos": _cell_center(e["pos"]), "t0": at, "color": C_GOOD})
+			"push":
+				# 처치가 아니어도 명중 글자는 뜬다
+				popups.append({"text": "밟기!" if e["src"] == "stomp" else "베기!", "pos": _cell_center(e["from"]), "t0": clock + t_echo + T_ECHO, "color": C_GOOD})
+			"deflect":
+				popups.append({"text": "튕김", "pos": _cell_center(e["pos"]), "t0": clock + t_echo + T_ECHO, "color": C_SHIELD})
 			"block":
 				ripples.append({"pos": _cell_center(e["pos"]), "t0": clock + t_enemy + T_ENEMY * 0.6})
 				popups.append({"text": "막음", "pos": _cell_center(e["pos"]), "t0": clock + t_enemy + T_ENEMY * 0.6, "color": C_ECHO})
@@ -293,7 +320,7 @@ func _finish_anim() -> void:
 		_show_banner()
 	anim = {}
 	# 아직 시작하지 않은 글자·조각은 지금 바로 보이게 당긴다
-	for list in [popups, fragments, ripples]:
+	for list in [popups, fragments, ripples, glows]:
 		for p in list:
 			if p["t0"] > clock:
 				p["t0"] = clock
@@ -350,11 +377,12 @@ func _draw_result() -> void:
 	var title := "런 승리!" if result_won else ("메아리가 무너졌다 (60턴)" if rules != null and rules.outcome == "timeout" else "쓰러졌다")
 	_text(title, 300, 40, C_GOOD if result_won else C_HURT)
 	_text("도달  %d / %d층" % [reached_floor, floor_count], 400, 24, C_TEXT)
-	_text("처치  밟기 %d · 베기 %d · 오사 %d" % [kills["stomp"], kills["slash"], kills["friendly"]], 444, 20, C_TEXT)
-	_text("남은 체력", 500, 18, C_MUTED)
-	_draw_hearts(Vector2(W / 2 - 2 * 34, 532), maxi(hp, 0))
+	_text("처치  밟기 %d · 베기 %d" % [kills["stomp"], kills["slash"]], 444, 20, C_TEXT)
+	_text("오사 %d · 으깨기 %d" % [kills["friendly"], kills["crush"]], 474, 20, C_TEXT)
+	_text("남은 체력", 530, 18, C_MUTED)
+	_draw_hearts(Vector2(W / 2 - 2 * 30, 562), maxi(hp, 0))
 	if not result_won and defeat_cause != "":
-		_text(defeat_cause, 600, 18, C_DANGER)
+		_text(defeat_cause, 630, 18, C_DANGER)
 	_text("화면을 눌러 다시", 720, 24, C_TEXT)
 
 
@@ -399,7 +427,7 @@ func _draw_play() -> void:
 				_draw_arrow(_cell_center(e["cell"]), _cell_center(e["cell"] + e["dir"]), Color(C_ENEMY, 0.9))
 			elif e["intent"] == "hit":
 				_draw_fist(e["cell"] + e["dir"])
-		_draw_enemy(e["pos"], e["kind"], e["dir"] if e["intent"] == "aim" else Vector2i(0, 1), e["alpha"])
+		_draw_enemy(e["pos"], e["kind"], e["dir"] if e["intent"] == "aim" else Vector2i(0, 1), e["alpha"], e["hp"], e["face"], e["flash"], e["squash"])
 
 	# 화살
 	for s in view["shots"]:
@@ -414,26 +442,39 @@ func _draw_play() -> void:
 	var shake := 0.0
 	if clock - shake_t0 < T_SHAKE:
 		shake = sin((clock - shake_t0) * 60.0) * 5.0
-	_draw_player(view["player_px"] + Vector2(shake, 0), view["hp"] <= 1, clock - hurt_t0 >= 0.0 and clock - hurt_t0 < T_HURT)
+	_draw_player(view["player_px"] + Vector2(shake, 0), view["hp"] <= 1, clock - hurt_t0 >= 0.0 and clock - hurt_t0 < T_HURT, view["sword"])
 	if view.has("slash_line"):
 		draw_line(view["slash_line"][0], view["slash_line"][1], C_PLAYER, 4.0)
 
 	# 발자국 ①②③ (플레이어·메아리 위에 그려 숫자가 가리지 않게)
+	var flash_t := clock - sword_flash_t0
+	var sword_flash := flash_t >= 0.0 and flash_t < T_FLASH
 	var stack: Dictionary = {}
 	for f in view["footprints"]:
 		var n: int = stack.get(f["pos"], 0)
 		stack[f["pos"]] = n + 1
 		var offset: Vector2 = [Vector2(16, 16), Vector2(44, 16), Vector2(16, 44)][mini(n, 2)]
-		_draw_footprint(_cell_rect(f["pos"]).position + offset, f["in"], f["act"], false)
+		_draw_footprint(_cell_rect(f["pos"]).position + offset, f["in"], f["act"], false, sword_flash)
 
 	_draw_preview()
 	_draw_effects()
 
 	# 아래 띠, 버튼, 안내
-	_text("처치  밟기 %d · 베기 %d · 오사 %d" % [kills["stomp"], kills["slash"], kills["friendly"]], 640, 18, C_MUTED)
-	_draw_button(BTN_SLASH, "베기 ▶ 방향을 미세요" if slash_mode else "베기", slash_mode)
+	_text("처치  밟기 %d · 베기 %d · 오사 %d · 으깨기 %d" % [kills["stomp"], kills["slash"], kills["friendly"], kills["crush"]], 640, 18, C_MUTED)
+	var wait_turns := sword_wait
+	if wait_turns > 0:
+		# 칼이 없다: 돌아올 때까지 남은 턴. 눌렀다면 좌우로 짧게 흔들린다
+		var bx := sin(flash_t * 60.0) * 6.0 if sword_flash else 0.0
+		_draw_sword_button(Rect2(BTN_SLASH.position + Vector2(bx, 0), BTN_SLASH.size), wait_turns)
+	else:
+		_draw_button(BTN_SLASH, "베기 ▶ 방향을 미세요" if slash_mode else "베기", slash_mode)
 	_draw_button(BTN_WAIT, "대기", false)
-	_text("베기를 켜고 밀면 그 방향을 벱니다" if slash_mode else "아무 곳이나 밀어서 이동", 850, 18, C_MUTED)
+	var hint := "아무 곳이나 밀어서 이동"
+	if wait_turns > 0:
+		hint = "칼은 메아리가 휘두른 뒤 돌아옵니다"
+	elif slash_mode:
+		hint = "베기를 켜고 밀면 그 방향을 벱니다"
+	_text(hint, 850, 18, C_MUTED)
 
 	# 층 안내
 	var bt := clock - banner_t0
@@ -447,7 +488,8 @@ func _draw_play() -> void:
 func _static_view() -> Dictionary:
 	var es: Array = []
 	for e in rules.enemies:
-		es.append({"kind": e["kind"], "cell": e["pos"], "pos": _cell_center(e["pos"]), "intent": e["intent"], "dir": e["dir"], "alpha": 1.0})
+		es.append({"kind": e["kind"], "cell": e["pos"], "pos": _cell_center(e["pos"]), "intent": e["intent"], "dir": e["dir"], "alpha": 1.0,
+			"hp": e["hp"], "face": e["face"], "flash": false, "squash": 0.0})
 	return {
 		"floor_index": floor_index, "turn": rules.turn, "hp": rules.hp, "walls": rules.walls.keys(),
 		"enemies": es, "show_intents": true, "danger": rules.danger_cells().keys(), "spawns": rules.spawns,
@@ -455,6 +497,7 @@ func _static_view() -> Dictionary:
 		"echo_alpha": 0.55 if rules.has_echo() else 0.0, "echo_px": _cell_center(rules.echo_pos()),
 		"player_px": _cell_center(rules.player), "player_cell": rules.player,
 		"blocked_echo": rules.next_echo_pos().x >= 0, "echo_cell": rules.next_echo_pos(),
+		"sword": rules.sword_wait() == 0,
 	}
 
 
@@ -478,11 +521,18 @@ func _anim_view() -> Dictionary:
 		"echo_alpha": 0.0, "echo_px": Vector2.ZERO, "player_px": _cell_center(snap["player"]),
 		"player_cell": post.player if post.turn == snap["turn"] + 1 else snap["player"],
 		"blocked_echo": false, "echo_cell": Vector2i(-1, -1),
+		# 칼: 이번 턴에 벴으면 손에서 떠났고, 메아리가 벤 턴이 끝나야 돌아온다
+		"sword": post.sword_wait() == 0 and t >= t_end if post.turn == snap["turn"] + 1 else true,
 	}
 
-	var moved: Dictionary = {}      # 적 id -> 도착 칸
-	var echo_killed: Dictionary = {}  # 칸 -> true (메아리 처치)
-	var shot_killed: Dictionary = {}
+	var t_hit := t_echo + T_ECHO      # 메아리의 일격이 닿는 순간
+	var moved: Dictionary = {}        # 적 id -> 도착 칸 (적 행동 단계의 이동)
+	var pushed: Dictionary = {}       # 적 id -> 밀려난 칸 (메아리 단계)
+	var crushed: Dictionary = {}      # 적 id -> 막힌 방향
+	var deflected: Dictionary = {}    # 적 id -> true (방패가 튕김)
+	var new_hp: Dictionary = {}       # 적 id -> [바뀌는 시각, 체력]
+	var echo_killed: Dictionary = {}  # 적 id -> 사라지는 시각 (메아리 처치·으깨기)
+	var shot_killed: Dictionary = {}  # 적 id -> true (오사)
 	for e in events:
 		match e["type"]:
 			"move":
@@ -505,9 +555,18 @@ func _anim_view() -> Dictionary:
 					view["echo_slash"] = [c2, c2.lerp(_cell_center(e["target"]), maxf(k_echo, 0.3))]
 			"kill":
 				if e["src"] == "friendly":
-					shot_killed[e["pos"]] = true
+					shot_killed[e["id"]] = true
 				else:
-					echo_killed[e["pos"]] = true
+					echo_killed[e["id"]] = t_enemy if e["src"] == "crush" else t_hit
+			"push":
+				pushed[e["id"]] = e["to"]
+				new_hp[e["id"]] = [t_hit, e["hp"]]
+			"crush":
+				crushed[e["id"]] = e["dir"]
+			"deflect":
+				deflected[e["id"]] = true
+			"arrow_hit":
+				new_hp[e["id"]] = [t_enemy + T_ENEMY * 0.6, e["hp"]]
 			"enemy_move":
 				moved[e["id"]] = e["to"]
 			"shot":
@@ -525,24 +584,40 @@ func _anim_view() -> Dictionary:
 		view["echo_px"] = _cell_center(snap["echo_pos"])
 
 	for e in snap["enemies"]:
+		var id: int = e["id"]
 		var cell: Vector2i = e["pos"]
 		var px := _cell_center(cell)
 		var alpha := 1.0
-		if echo_killed.has(cell) and not moved.has(e["id"]) and t >= t_echo + T_ECHO:
+		var ehp: int = e["hp"]
+		var squash := 0.0
+		if new_hp.has(id) and t >= new_hp[id][0]:
+			ehp = new_hp[id][1]
+		if pushed.has(id):
+			# 히트스톱 동안 일격 방향으로 한 칸 미끄러진다
+			var k_push := clampf((t - t_hit) / T_STOP, 0.0, 1.0)
+			px = px.lerp(_cell_center(pushed[id]), k_push)
+			if t >= t_hit:
+				cell = pushed[id]
+		if crushed.has(id) and t >= t_hit:
+			# 으깨기: 막힌 쪽으로 반 칸 가다 납작해진다
+			squash = clampf((t - t_hit) / T_STOP, 0.0, 1.0)
+			px += Vector2(crushed[id]) * CELL * 0.3 * squash
+			ehp = 1
+		if echo_killed.has(id) and t >= echo_killed[id]:
 			alpha = 0.0
-		if moved.has(e["id"]):
-			px = px.lerp(_cell_center(moved[e["id"]]), k_enemy)
-			if shot_killed.has(moved[e["id"]]) and t >= t_enemy + T_ENEMY * 0.6:
-				alpha = 0.0
-		elif shot_killed.has(cell) and t >= t_enemy + T_ENEMY * 0.6:
+		if moved.has(id):
+			px = px.lerp(_cell_center(moved[id]), k_enemy)
+		if shot_killed.has(id) and t >= t_enemy + T_ENEMY * 0.6:
 			alpha = 0.0
-		view["enemies"].append({"kind": e["kind"], "cell": cell, "pos": px, "intent": e["intent"], "dir": e["dir"], "alpha": alpha})
+		view["enemies"].append({"kind": e["kind"], "cell": cell, "pos": px, "intent": e["intent"], "dir": e["dir"], "alpha": alpha,
+			"hp": ehp, "face": e["face"], "flash": deflected.has(id) and t >= t_hit and t < t_hit + 0.2, "squash": squash})
 
 	# 증원은 턴 끝에 등장
 	if t >= t_end:
 		for e in events:
 			if e["type"] == "spawn":
-				view["enemies"].append({"kind": e["kind"], "cell": e["pos"], "pos": _cell_center(e["pos"]), "intent": "none", "dir": Vector2i.ZERO, "alpha": 1.0})
+				view["enemies"].append({"kind": e["kind"], "cell": e["pos"], "pos": _cell_center(e["pos"]), "intent": "none", "dir": Vector2i.ZERO, "alpha": 1.0,
+					"hp": Rules.ENEMY_HP.get(e["kind"], 1), "face": Vector2i(0, 1), "flash": false, "squash": 0.0})
 	return view
 
 
@@ -615,6 +690,15 @@ func _draw_effects() -> void:
 		var col: Color = p["color"]
 		col.a = 1.0 - pt / T_POPUP
 		draw_string(font, p["pos"] + Vector2(-60, -30 - 20 * pt / T_POPUP), p["text"], HORIZONTAL_ALIGNMENT_CENTER, 120, 22, col)
+	# 층 클리어: 발자국이 빛나며 사라진다
+	for g in glows:
+		var gt: float = clock - g["t0"]
+		if gt < 0.0 or gt > T_GLOW:
+			continue
+		var gk := gt / T_GLOW
+		draw_circle(g["pos"], 13.0 + 10.0 * gk, Color(C_ECHO, 0.5 * (1.0 - gk)))
+		draw_arc(g["pos"], 13.0 + 22.0 * gk, 0, TAU, 24, Color(C_TEXT, 1.0 - gk), 3.0)
+	glows = glows.filter(func(x): return clock - x["t0"] <= T_GLOW)
 	popups = popups.filter(func(x): return clock - x["t0"] <= T_POPUP)
 	fragments = fragments.filter(func(x): return clock - x["t0"] <= 0.4)
 	ripples = ripples.filter(func(x): return clock - x["t0"] <= 0.4)
@@ -626,8 +710,12 @@ func _draw_hurt_border() -> void:
 		draw_rect(Rect2(4, 4, W - 8, H - 8), Color(C_HURT, 1.0 - ht / T_HURT), false, 10.0)
 
 
-func _draw_player(pos: Vector2, low: bool, broken: bool) -> void:
+func _draw_player(pos: Vector2, low: bool, broken: bool, sword := true) -> void:
 	draw_circle(pos, 22, C_PLAYER)
+	if sword:
+		# 칼이 손에 있다: 오른쪽 아래의 짧은 칼 선(발자국은 칸의 왼쪽 위·오른쪽 위·왼쪽 아래에 그려지므로 가리지 않는다)
+		draw_line(pos + Vector2(13, 13), pos + Vector2(29, 29), C_PLAYER, 4.0)
+		draw_line(pos + Vector2(12, 20), pos + Vector2(20, 12), C_PLAYER, 3.0)
 	if broken:
 		# 피격: 깨진 외곽선
 		for i in 6:
@@ -646,10 +734,24 @@ func _draw_dashed_circle(pos: Vector2, radius: float, color: Color, width: float
 		draw_arc(pos, radius, i * TAU / 10, i * TAU / 10 + TAU / 20, 5, color, width)
 
 
-func _draw_enemy(pos: Vector2, kind: String, facing: Vector2i, alpha: float) -> void:
+func _draw_enemy(pos: Vector2, kind: String, facing: Vector2i, alpha: float, ehp := 1, face := Vector2i(0, 1), flash := false, squash := 0.0) -> void:
 	var col := Color(C_ENEMY, alpha)
 	if kind == "W":
 		draw_rect(Rect2(pos - Vector2(20, 20), Vector2(40, 40)), col)
+	elif kind == "S":
+		# 방패병: 정사각형 + 바라보는 쪽 변의 두꺼운 밝은 막대(방패). 으깨질 때는 막힌 방향으로 납작해진다
+		var half := Vector2(20, 20)
+		if squash > 0.0:
+			half = Vector2(20, 20) * (1.0 - 0.45 * squash)
+		draw_rect(Rect2(pos - half, half * 2), col)
+		var f := Vector2(face)
+		var side := Vector2(-f.y, f.x)
+		var a := pos + f * 22 - side * 23
+		var b := pos + f * 22 + side * 23
+		draw_line(a, b, Color(C_TEXT if flash else C_SHIELD, alpha), 12.0 if flash else 8.0)
+		# 남은 체력만큼 점
+		for i in ehp:
+			draw_circle(pos + Vector2((i - (ehp - 1) / 2.0) * 13, 0) - f * 3, 4.5, Color(C_BG, alpha))
 	else:
 		# 궁수: 꼭짓점이 조준 방향을 가리키는 삼각형
 		var f := Vector2(facing)
@@ -683,15 +785,18 @@ func _draw_fist(cell: Vector2i) -> void:
 
 
 ## 발자국: 작은 원 안의 숫자. 베기였으면 벨 방향으로 짧은 선
-func _draw_footprint(pos: Vector2, order: int, act: String, big: bool) -> void:
+## 칼이 실린 발자국(베기)은 테두리와 칼 선을 굵게. flash 면 밝게 깜빡인다(칼이 어디 있는지 가리킴)
+func _draw_footprint(pos: Vector2, order: int, act: String, big: bool, flash := false) -> void:
 	var radius := 18.0 if big else 13.0
-	draw_circle(pos, radius, Color(C_BG, 0.75))
-	draw_arc(pos, radius, 0, TAU, 20, C_ECHO, 2.0)
+	var sword := Rules.is_slash(act)
+	var ring := C_TEXT if sword and flash else C_ECHO
+	draw_circle(pos, radius, Color(C_ECHO, 0.9) if sword and flash else Color(C_BG, 0.75))
+	draw_arc(pos, radius, 0, TAU, 20, ring, 4.0 if sword else 2.0)
 	var size := 24 if big else 19
 	draw_string(font, pos + Vector2(-radius, size * 0.36), str(order), HORIZONTAL_ALIGNMENT_CENTER, radius * 2, size, C_TEXT)
-	if Rules.is_slash(act):
+	if sword:
 		var d := Vector2(Rules.act_dir(act))
-		draw_line(pos + d * radius, pos + d * (radius + 12), C_ECHO, 3.0)
+		draw_line(pos + d * radius, pos + d * (radius + 14), ring, 6.0)
 
 
 func _draw_hearts(pos: Vector2, filled: int) -> void:
@@ -718,6 +823,27 @@ func _draw_button(rect: Rect2, label: String, active: bool) -> void:
 	draw_rect(rect, C_ECHO if active else C_GRID, false, 5.0 if active else 2.0)
 	var size := 18 if label.length() > 4 else 26
 	draw_string(font, Vector2(rect.position.x, rect.position.y + rect.size.y / 2 + size * 0.36), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x, size, C_TEXT)
+
+
+## 칼이 없을 때의 베기 버튼: 어둡게, 점선 테두리, "칼" + 돌아올 때까지 남은 턴(발자국과 같은 원 숫자)
+func _draw_sword_button(rect: Rect2, wait_turns: int) -> void:
+	draw_rect(rect, Color(C_PANEL, 0.5))
+	var step := 16.0
+	var x := rect.position.x
+	while x < rect.end.x:
+		var x2 := minf(x + step * 0.55, rect.end.x)
+		draw_line(Vector2(x, rect.position.y), Vector2(x2, rect.position.y), C_GRID, 2.0)
+		draw_line(Vector2(x, rect.end.y), Vector2(x2, rect.end.y), C_GRID, 2.0)
+		x += step
+	var y := rect.position.y
+	while y < rect.end.y:
+		var y2 := minf(y + step * 0.55, rect.end.y)
+		draw_line(Vector2(rect.position.x, y), Vector2(rect.position.x, y2), C_GRID, 2.0)
+		draw_line(Vector2(rect.end.x, y), Vector2(rect.end.x, y2), C_GRID, 2.0)
+		y += step
+	var c := rect.get_center()
+	draw_string(font, Vector2(rect.position.x, c.y + 9), "칼", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 44, 26, C_MUTED)
+	_draw_footprint(c + Vector2(26, 0), wait_turns, "SR", true)
 
 
 # ---------------------------------------------------------------- 입력 흉내 (tests/)
