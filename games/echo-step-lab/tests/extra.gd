@@ -16,6 +16,9 @@ var runs_finished := 0
 var wins := 0
 var shield_runs := 0
 var main_runs := 0
+var fx_seen := {}
+const FX_NAMES := ["step", "slash_arc", "echo_stomp", "echo_slash_arc", "kill_shards", "afterglow", "push_streak", "crush_shake",
+	"deflect_sparks", "bomb_throw", "blast_embers", "hurt_heart", "floor_sweep", "confetti", "rewind_flash"]
 var seen := {"sword_out": 0, "shield_hurt": 0, "crush": 0, "bomb": 0, "bomb_intent": 0, "rewind": 0}
 
 
@@ -117,6 +120,18 @@ func invariants() -> void:
 		check(b["fuse"] == 1, "남은 턴이 1이 아닌 폭탄이 남아 있음: %d" % b["fuse"])
 		check(bp.x >= 0 and bp.x < 7 and bp.y >= 0 and bp.y < 7, "폭탄이 보드 밖")
 	check(game.rewinds_left >= 0 and game.rewinds_left <= 1, "rewinds_left 범위 밖")
+	# 4차 연출: 이름은 배선표에 있는 것만, 흔들림은 정해진 값만, 한 턴 연출은 0.9초 이하. 연출 이름과 흔들림이 서로 맞아야 한다
+	check(game.last_anim_duration >= 0.0 and game.last_anim_duration <= 0.9001, "연출 길이가 0.9초를 넘음: %.2f" % game.last_anim_duration)
+	check(game.last_shake in [0.0, 4.0, 5.0, 6.0, 8.0], "흔들림 값이 배선표에 없음: %.1f" % game.last_shake)
+	var want_shake := 0.0
+	for n in game.last_fx:
+		fx_seen[n] = fx_seen.get(n, 0) + 1
+		check(n in FX_NAMES or String(n).begins_with("combo_"), "배선표에 없는 연출 이름: %s" % n)
+		want_shake = maxf(want_shake, {"kill_shards": 4.0, "crush_shake": 5.0, "hurt_heart": 6.0, "blast_embers": 8.0}.get(n, 6.0 if String(n).begins_with("combo_") else 0.0))
+	check(is_equal_approx(game.last_shake, want_shake), "연출 목록과 흔들림이 어긋남: %s → %.1f" % [str(game.last_fx), game.last_shake])
+	check(game.last_fx.has("afterglow") == game.last_fx.has("kill_shards"), "kill_shards 와 afterglow 는 함께 나와야 함")
+	if game.last_fx.has("rewind_flash"):
+		check(game.last_fx.size() == 1 and game.last_anim_duration == 0.0, "되감기 뒤에는 rewind_flash 하나뿐이어야 함")
 	if game.state == game.State.PLAY and game.turn == 0:
 		check(game.bombs.is_empty(), "턴 0인데 폭탄이 놓여 있음")  # 되감기로 턴 0에 돌아온 경우 rewinds_left 는 0일 수 있다
 	for k in ["stomp", "slash", "friendly", "crush"]:
@@ -159,6 +174,12 @@ func _process(_delta: float) -> bool:
 	check(seen["sword_out"] > 0, "칼이 없는 상태를 한 번도 지나가지 않음")
 	check(main_runs >= 2 and seen["bomb"] > 0 and seen["bomb_intent"] > 0, "폭탄병·폭탄을 지나가지 않음")
 	check(seen["rewind"] > 0, "되감기가 한 번도 성공하지 않음")
+	var missing: Array = []
+	for n in FX_NAMES:
+		if n != "confetti" and not fx_seen.has(n):
+			missing.append(n)
+	check(missing.is_empty(), "무작위 입력이 한 번도 지나가지 않은 연출: %s" % str(missing))
+	print("extra: 지나간 연출 %d종 %s" % [fx_seen.size(), str(fx_seen)])
 	print("extra: 본편 층 런 %d개, 던지기 의도 %d번, 놓인 폭탄 %d번, 되감기 성공 %d번" % [main_runs, seen["bomb_intent"], seen["bomb"], seen["rewind"]])
 	print("extra: 방패병 층 런 %d개, 칼 없는 상태 %d번, 다친 방패병 %d번, 으깨기 본 입력 %d번" % [shield_runs, seen["sword_out"], seen["shield_hurt"], seen["crush"]])
 	for f in failures:

@@ -1,7 +1,8 @@
 extends SceneTree
 ## 화면 캡처(빌드실·개발실 작성). SCREENS.md 의 화면 3개와 핵심 순간을 찍는다.
 ## 01~13: 1차 / 14~23: 2차(칼 하나, 방패병, 밀치기, 으깨기, 튕김, 층 클리어 발자국)
-## 24~33: 3차(폭탄병, 던지기 의도, 놓인 폭탄, 폭발, 오사, 되감기, 체험 구간 끝, 10층)
+## 24~35: 3차(폭탄병, 던지기 의도, 놓인 폭탄, 폭발, 오사, 되감기, 체험 구간 끝, 10층)
+## 36~45: 4차 보는 맛(이동 변형, 메아리 내려찍기, 베기 호, 연속 처치, 폭탄 날아감, 층 클리어 띠, 대기 중 두 장, 타이틀 두 장)
 ## 실행: python tools/screenshot.py games/<slug>  →  shots/*.png
 
 const Content := preload("res://scripts/content.gd")
@@ -182,5 +183,61 @@ func _process(_delta: float) -> bool:
 			acts("W W W W W W W W W W")
 		2100:
 			shot("35-result-lose-bomb")           # 결과(패배): "10턴, 폭탄의 폭발"
+			# ---- 4차 ----
+			one_floor([], V(3, 6), [["W", V(3, 2)], ["W", V(0, 0)]])
+		2160:
+			acts("U")
+		2164:
+			shot("36-step-stretch")               # 이동 중: 플레이어가 이동 방향으로 늘어남, 떠난 칸의 먼지
+			acts("D R")
+		2230:
+			acts("U")                             # 메아리가 (3,5)를 밟아 처치
+		2241:
+			shot("37-echo-stomp-drop")            # 메아리가 잔상을 끌며 내려찍는 중(크게)
+		2249:
+			shot("38-kill-shards")                # 처치: 조각 10개, 충격 고리, 잔광, 보드 흔들림
+		2300:
+			one_floor([], V(3, 6), [["A", V(3, 5)], ["W", V(0, 0)]])
+			acts("SU")
+		2304:
+			shot("39-slash-arc")                  # 베기: 호를 그리는 칼 궤적
+			one_floor([], V(3, 6), [["B", V(3, 3)], ["W", V(0, 6)], ["W", V(1, 5)], ["W", V(6, 0)]])
+		2360:
+			acts("R")
+		2382:
+			shot("40-bomb-fly")                   # 폭탄이 포물선으로 날아가는 중
+		2420:
+			acts("U")                             # 폭발에 졸개 둘
+		2458:
+			shot("41-combo")                      # "2연속!", 불씨, 보드 흔들림 8
+		2520:
+			game.debug_load_floors([{"walls": [], "start": V(3, 6), "enemies": [["W", V(3, 2)]], "spawns": []}, Content.FLOORS[3]])
+			acts("U D R")
+		2580:
+			acts("U")
+		2606:
+			shot("42-floor-sweep")                # 층 클리어: 보드를 훑는 띠, "층 클리어!"
+		2680:
+			game.debug_load_floors([Content.FLOORS[9]])
+			acts("U")
+		2760:
+			shot("43-idle-a")                     # 대기 중 한 장
+		2790:
+			shot("44-idle-b")                     # 0.5초 뒤 같은 장면(달라야 한다: 숨쉬기, 맥동, 먼지). 1턴이라 메아리·사선이 없는 가장 조용한 장면
+			acts("SR U D")
+		2860:
+			shot("45-mid-idle-a")                 # 4턴째 대기 중: 메아리, 발자국 ①②③, 의도가 함께 있는 흔한 장면
+		2890:
+			shot("46-mid-idle-b")                 # 0.5초 뒤
+			acts("W W W W W W W W W W W W")       # 져서 결과 화면으로
+			if game.state != game.State.RESULT:
+				acts("W W W W W W W W W W W W W W W W W W W W")
+		2950:
+			game.debug_tap(Vector2(270, 480))     # 결과 → 새 런
+			game.state = game.State.TITLE         # 타이틀을 다시 본다(찍기 전용)
+		2990:
+			shot("47-title-a")                    # 타이틀의 움직이는 그림
+		3080:
+			shot("48-title-b")                    # 1.5초 뒤(메아리가 따라 걷는 모습)
 			quit(0)
 	return false
