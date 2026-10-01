@@ -50,7 +50,7 @@ git push --dry-run origin HEAD:main
 2. design/sim/*.py — 규칙의 **기준 구현.** FIRST_BUILD.md 가 가리키는 클래스/함수를 한 줄씩 읽는다.
 3. tests/smoke.gd — 무엇이 어떤 값으로 검사되는지. 테스트 인터페이스가 실제로 어떻게 불리는지.
 4. design/SCREENS.md — 화면별 요소, 동작, 피드백.
-   design/mock/main.png, title.png, result.png 를 **열어 본다.** 빌드의 화면이 닿아야 할 모습이다(도형 시안).
+   design/mock/main.png (있으면 title.png, result.png 도)를 **열어 본다.** 빌드의 화면이 닿아야 할 모습이다(도형 시안).
 5. design/spec.json 의 not_now — 만들지 않을 것.
 6. design/GAME_DESIGN.md 는 FIRST_BUILD.md 가 절 번호로 가리키는 부분만(피드백, 비주얼 방향 등). 나머지는 이번 빌드 범위가 아니다.
 

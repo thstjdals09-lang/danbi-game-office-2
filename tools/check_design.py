@@ -28,6 +28,12 @@ DESIGN_SECTIONS = [
     "깊이 검증", "리스크와 미해결 질문",
 ]
 MIN_DESIGN_CHARS = 6000
+# 제안서 형식(2026-10-02~): 대표의 빌드 결재 전에 쓰는 가벼운 디자인. 깊은 설계는 합격 뒤 프로덕션 디자인실이 한다.
+PROPOSAL_SECTIONS = [
+    "한 줄 정의", "플레이어 판타지", "핵심 판단과 조작", "한 판의 흐름", "주 화면 설계", "핵심 규칙", "깊이의 근거",
+    "키울 방향과 미해결 질문",
+]
+MIN_PROPOSAL_CHARS = 1500
 
 
 def read(path):
@@ -88,11 +94,21 @@ def check_design(game, sim, errs, milestone=1):
         errs.append("design/GAME_DESIGN.md 없음")
     else:
         text = read(gd)
-        for n, title in enumerate(DESIGN_SECTIONS, 1):
+        # 예전 형식(16개 절)이면 그대로, 아니면 제안서 형식(8개 절)으로 본다
+        proposal = not re.search(r"^##\s*16\.", text, re.M)
+        sections, min_chars = (PROPOSAL_SECTIONS, MIN_PROPOSAL_CHARS) if proposal else (DESIGN_SECTIONS, MIN_DESIGN_CHARS)
+        for n, title in enumerate(sections, 1):
             if not re.search(rf"^##\s*{n}\.\s*{re.escape(title)}", text, re.M):
                 errs.append(f"GAME_DESIGN.md: '## {n}. {title}' 절 없음")
-        if len(text) < MIN_DESIGN_CHARS:
-            errs.append(f"GAME_DESIGN.md가 너무 짧음 ({len(text)}자 < {MIN_DESIGN_CHARS}자)")
+        if len(text) < min_chars:
+            errs.append(f"GAME_DESIGN.md가 너무 짧음 ({len(text)}자 < {min_chars}자)")
+        if proposal and milestone == 1:
+            mock = os.path.join(game, "design", "mock", "main.svg")
+            if not os.path.exists(mock):
+                errs.append("design/mock/main.svg 없음 — 주 화면 시안이 있어야 대표가 빌드 결재를 할 수 있음")
+            elif "viewBox" not in read(mock):
+                errs.append("design/mock/main.svg 에 viewBox 가 없음")
+            return   # 제안서에는 ROADMAP 과 시뮬레이션이 없다
         if re.search(r"TODO|TBD|미정\s*$", text, re.M):
             errs.append("GAME_DESIGN.md에 TODO/TBD/미정이 남아 있음 — 결정하거나 '리스크와 미해결 질문'으로 옮기세요")
     if not os.path.exists(os.path.join(game, "design", "ROADMAP.md")):

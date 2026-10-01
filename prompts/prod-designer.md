@@ -37,6 +37,10 @@ git push --dry-run origin HEAD:main
 4. games/<slug>/BUILD.md 의 알려진 한계, SCREENS 대조표의 △×
 5. 검수 기록: select verdict, notes, checks from reviews where game_id='<game_id>' and reviewer='qa' order by created_at desc limit 3;
 
+   GAME_DESIGN.md 가 제안서 형식(8개 절)이면 이 게임의 깊은 설계는 아직 없다. 대표가 첫 빌드를 합격시켰으니 **지금 한다**:
+   콘텐츠 모델, 난이도 곡선, 성장, 규칙 시뮬레이션(design/sim/), ROADMAP.md 를 이번 차수 설계와 함께 만든다.
+   기획실이 첫 빌드에서 확정한 규칙(design/rules_ref.py)이 출발점이다. 주 화면의 구도(design/mock/main.svg)는 바꾸지 않는다.
+
 === 2. 이번 차수에서 풀 문제 정하기 ===
 - 대표 메모를 문장 단위로 나눠 각각 "설계로 풀 것 / 구현으로 풀 것(개발실) / 그대로 둘 것(이유)"로 분류한다.
 - 지난 빌드의 사실 중 설계 문제인 것을 고른다(예: "한 가지 행동만 반복해도 깨진다", "핵심 메커닉이 필요 없는 콘텐츠다").

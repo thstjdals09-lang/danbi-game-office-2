@@ -13,13 +13,13 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 OWNER = "danbi-game-office-2"
 
 # 파일 이름, 부서 이름, 언제 부르는지(슬래시 명령 목록에 보이는 한 줄)
 DEPARTMENTS = [
     ("idea-lab", "아이디어 연구소", "새 게임 아이디어를 넓게 찾아 구조화·비평한 뒤 제작 가치가 있는 것만 입고한다"),
-    ("designer", "디자인실", "아이디어 하나를 가져와 깊이 있는 게임 디자인과 규칙 시뮬레이션을 만든다"),
+    ("designer", "디자인실", "아이디어 하나를 가져와 제안서와 주 화면 시안을 만든다(대표의 빌드 결재용)"),
     ("planner", "기획실", "디자인에서 첫 빌드 조각을 잘라 화면·규칙·검사(tests/smoke.gd)를 확정한다"),
     ("builder", "빌드실", "기획 패키지를 Godot 게임으로 만들고 검사를 통과시킨다"),
     ("qa", "검수실", "빌드를 CI·검사 파일 무결성·화면·빌드 기록의 정직함으로 검수한다"),
