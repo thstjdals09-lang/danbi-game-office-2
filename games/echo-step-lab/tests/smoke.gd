@@ -2,8 +2,10 @@ extends SceneTree
 ## 메아리 발자국 — 검사 (기획실 작성)
 ## 1차: design/spec_m1.json 의 M1~M12 (design/FIRST_BUILD.md "테스트 인터페이스")
 ## 2차: design/spec_m2.json 의 M13~M18 (design/BUILD_2.md "테스트 인터페이스" 추가분)
-## 3차: design/spec.json 의 M19~M25 (design/BUILD_3.md "테스트 인터페이스" 추가분)
-## 기대값은 design/first_build_replay.py, build_2_replay.py, build_3_replay.py (기준 구현 design/sim/sim.py)로 계산했다.
+## 3차: design/spec_m3.json 의 M19~M25 (design/BUILD_3.md "테스트 인터페이스" 추가분)
+## 4차: design/spec.json 의 M26~M32 (design/BUILD_4.md "테스트 인터페이스" 추가분 — 연출 배선. 규칙은 바뀌지 않았다)
+## 기대값은 design/first_build_replay.py, build_2_replay.py, build_3_replay.py, build_4_replay.py (기준 구현 design/sim/sim.py)로 계산했다.
+## 4차에서 기대값이 바뀐 이전 검사: 없음.
 ## 2차에서 기대값이 바뀐 1차 검사: M1·M10(기본 층 수 3 → 5), M9(정답 순서) — design/BUILD_2.md "바뀐 기존 검사".
 ## 3차에서 기대값이 바뀐 이전 검사: M1·M10(기본 층 수 5 → 10), M9(5층 뒤가 승리가 아니라 6층) — design/BUILD_3.md.
 ## 빌드실·개발실은 이 파일을 바꾸지 않는다. 틀렸다고 판단되면 반송한다.
@@ -67,6 +69,13 @@ func run_all() -> void:
 	m22_cooldown_and_echo()
 	m23_rewind_restores()
 	m24_rewind_limits()
+	m26_fx_keeps_rules_and_speed()
+	m27_fx_move_slash_echo_kill()
+	m28_fx_combo()
+	m29_fx_shield()
+	m30_fx_blast_and_hurt()
+	m31_fx_clear_and_win()
+	m32_shake_and_input()
 	m11_pressure_and_turn_limit()
 	m10_defeat_and_restart()
 
@@ -136,6 +145,23 @@ func bomb_intent(i: int, target: Vector2i) -> bool:
 ## 놓인 폭탄이 정확히 하나이고 그 칸·남은 턴이 맞는가
 func one_bomb(pos: Vector2i, fuse: int) -> bool:
 	return game.bombs.size() == 1 and game.bombs[0]["pos"] == pos and game.bombs[0]["fuse"] == fuse
+
+
+## last_fx 가 주어진 이름을 모두 포함하는가
+func fx_has(names: Array) -> bool:
+	for n in names:
+		if not game.last_fx.has(n):
+			return false
+	return true
+
+
+## last_fx 가 정확히 이 목록인가(순서 무관)
+func fx_is(names: Array) -> bool:
+	return game.last_fx.size() == names.size() and fx_has(names)
+
+
+func shake_is(px: float) -> bool:
+	return is_equal_approx(game.last_shake, px)
 
 
 func shield_is(pos: Vector2i, hp: int, face: Vector2i) -> bool:
@@ -516,6 +542,121 @@ func m24_rewind_limits() -> void:
 	load_floor([], V(3, 6), [["A", V(3, 5)]])
 	acts("SU W W W")
 	check("M24", game.state == game.State.RESULT and not game.debug_rewind() and game.rewinds_left == 0, "결과 화면에서는 되감을 수 없다")
+
+
+# ---------------------------------------------------------------- 4차 (M26~M32) 연출 배선
+
+func m26_fx_keeps_rules_and_speed() -> void:
+	game.debug_load_floors([
+		{"walls": [V(1, 1), V(5, 1), V(1, 5), V(5, 5)], "start": V(3, 6), "enemies": [["W", V(3, 0)], ["W", V(0, 2)]], "spawns": [[6, "W", V(6, 0)]]},
+		{"walls": [V(1, 0), V(0, 1)], "start": V(3, 6), "enemies": [["W", V(0, 0)]], "spawns": []},
+	])
+	check("M26", game.last_fx.is_empty() and shake_is(0.0), "새 런: 연출 목록 비어 있음")
+	var all_ok := true
+	var longest := 0.0
+	for a in F1.split(" ", false):
+		if not game.debug_act(a):
+			all_ok = false
+		var d: float = game.last_anim_duration
+		longest = maxf(longest, d)
+		if d <= 0.0 or d > 0.9 + 0.0001:
+			all_ok = false
+	check("M26", all_ok, "1층 정답 11행동: 모두 받아들여지고 매번 0 < 연출 길이 ≤ 0.9초 (가장 긴 것 %.2f초)" % longest)
+	check("M26", game.floor_index == 1 and game.turn == 0 and kills_are(1, 2, 0) and game.hp == 5, "규칙은 그대로: 1층 클리어, 밟기 1 · 베기 2")
+	var fx_before: Array = game.last_fx.duplicate()
+	var shake_before: float = game.last_shake
+	var dur_before: float = game.last_anim_duration
+	check("M26", not game.debug_act("D"), "보드 밖 이동은 거절")
+	check("M26", game.last_fx == fx_before and is_equal_approx(game.last_shake, shake_before) and is_equal_approx(game.last_anim_duration, dur_before), "거절된 행동은 연출 값을 바꾸지 않는다")
+
+
+func m27_fx_move_slash_echo_kill() -> void:
+	load_floor([V(1, 0), V(0, 1)], V(3, 6), [["W", V(3, 2)], ["W", V(0, 0)]])
+	acts("U")
+	check("M27", fx_is(["step"]) and shake_is(0.0), "이동: step 만, 흔들림 없음")
+	acts("D R U")
+	check("M27", kills_are(1, 0, 0), "4턴째: 메아리가 밟아 처치")
+	check("M27", fx_has(["step", "echo_stomp", "kill_shards", "afterglow"]) and shake_is(4.0), "처치 턴: step · echo_stomp · kill_shards · afterglow, 흔들림 4")
+	check("M27", not game.last_fx.has("combo_2") and not game.last_fx.has("floor_sweep"), "한 명 처치라 연속 아님, 적이 남아 층 클리어 아님")
+	acts("W")
+	check("M27", fx_is(["echo_stomp"]) and shake_is(0.0), "다음 턴(대기): 메아리가 이동을 재생 → echo_stomp 만, 흔들림 0")
+	load_floor([V(1, 0), V(0, 1)], V(3, 6), [["A", V(3, 5)], ["W", V(0, 0)]])
+	acts("SU")
+	check("M27", fx_is(["slash_arc"]) and shake_is(0.0), "베기: slash_arc 만")
+	acts("W")
+	check("M27", fx_is([]) and shake_is(0.0), "아무 일도 없는 대기: 연출 없음")
+	acts("W W")
+	check("M27", kills_are(0, 1, 0) and fx_is(["echo_slash_arc", "kill_shards", "afterglow"]) and shake_is(4.0), "4턴째: 메아리가 벰 → echo_slash_arc · kill_shards · afterglow, 흔들림 4")
+
+
+func m28_fx_combo() -> void:
+	load_floor([], V(3, 6), [["B", V(3, 3)], ["W", V(0, 6)], ["W", V(1, 5)]])
+	acts("R")
+	check("M28", fx_has(["step", "bomb_throw"]) and shake_is(0.0) and one_bomb(V(3, 6), 1), "폭탄병이 던진 턴: step · bomb_throw")
+	acts("U")
+	check("M28", kills_are(0, 0, 2) and game.hp == 5, "폭발에 졸개 둘이 휘말림(오사 2), 나는 피해 없음")
+	check("M28", fx_has(["step", "blast_embers", "kill_shards", "afterglow", "combo_2"]), "blast_embers · kill_shards · afterglow · combo_2")
+	check("M28", not game.last_fx.has("combo_3") and not game.last_fx.has("hurt_heart"), "combo_3 아님, 피격 연출 없음")
+	check("M28", shake_is(8.0), "흔들림은 가장 큰 값 하나: 폭발 8 (연속 6, 처치 4보다 큼)")
+
+
+func m29_fx_shield() -> void:
+	load_floor([], V(3, 6), [["S", V(3, 3)]])
+	acts("SU W L W")
+	check("M29", shield_is(V(3, 5), 2, V(0, 1)) and fx_has(["echo_slash_arc", "deflect_sparks"]), "정면 베기: echo_slash_arc · deflect_sparks")
+	check("M29", not game.last_fx.has("kill_shards") and not game.last_fx.has("push_streak") and shake_is(0.0), "튕김에는 처치·밀치기 연출도 흔들림도 없다")
+	load_floor([], V(3, 3), [["S", V(3, 6)]])
+	acts("D R W U")
+	check("M29", shield_is(V(3, 5), 1, V(1, 0)) and fx_has(["step", "echo_stomp", "push_streak"]), "옆에서 밟아 밀림: echo_stomp · push_streak")
+	check("M29", not game.last_fx.has("kill_shards") and not game.last_fx.has("crush_shake") and shake_is(0.0), "죽지 않았으니 처치 연출·흔들림 없음")
+	load_floor([V(2, 3)], V(3, 3), [["S", V(3, 6)], ["W", V(6, 0)]])
+	acts("R L U U U")
+	check("M29", crush_is(1) and fx_has(["echo_stomp", "crush_shake", "kill_shards", "afterglow"]), "벽에 으깨짐: crush_shake · kill_shards · afterglow")
+	check("M29", shake_is(5.0) and not game.last_fx.has("combo_2") and not game.last_fx.has("push_streak"), "흔들림 5(으깨기 5 > 처치 4), 연속 아님")
+
+
+func m30_fx_blast_and_hurt() -> void:
+	load_floor([], V(3, 6), [["B", V(3, 3)]])
+	acts("W")
+	check("M30", fx_is(["bomb_throw"]) and shake_is(0.0), "던진 턴(대기): bomb_throw 만")
+	acts("W")
+	check("M30", game.hp == 4 and fx_has(["blast_embers", "hurt_heart"]) and shake_is(8.0), "폭발에 맞음: blast_embers · hurt_heart, 흔들림 8")
+	load_floor([], V(3, 6), [["B", V(3, 3)]])
+	acts("L L")
+	check("M30", game.hp == 5 and fx_has(["step", "blast_embers"]) and not game.last_fx.has("hurt_heart") and shake_is(8.0), "비켜도 폭발 연출과 흔들림 8은 있고, 피격 연출은 없다")
+	load_floor([V(1, 0), V(0, 1)], V(3, 6), [["W", V(3, 5)], ["W", V(0, 0)]])
+	acts("W")
+	check("M30", game.hp == 4 and fx_is(["hurt_heart"]) and shake_is(6.0), "졸개에게 맞음: hurt_heart 만, 흔들림 6")
+
+
+func m31_fx_clear_and_win() -> void:
+	game.debug_load_floors([
+		{"walls": [], "start": V(3, 6), "enemies": [["W", V(3, 2)]], "spawns": []},
+		{"walls": [V(1, 0), V(0, 1)], "start": V(3, 6), "enemies": [["W", V(0, 0)]], "spawns": []},
+	])
+	acts("U D R U")
+	check("M31", game.floor_index == 1 and game.turn == 0, "1층 클리어 → 2층")
+	check("M31", fx_has(["floor_sweep", "kill_shards"]) and not game.last_fx.has("confetti"), "층 클리어: floor_sweep, 마지막 층이 아니라 confetti 없음")
+	load_floor([], V(3, 6), [["W", V(3, 2)]])
+	acts("U D R U")
+	check("M31", game.state == game.State.RESULT and game.result_won, "마지막 층 클리어 → 승리")
+	check("M31", fx_has(["step", "echo_stomp", "kill_shards", "afterglow", "floor_sweep", "confetti"]) and shake_is(4.0), "승리: floor_sweep · confetti, 흔들림 4")
+
+
+func m32_shake_and_input() -> void:
+	load_floor([V(1, 0), V(0, 1)], V(3, 6), [["W", V(3, 2)], ["W", V(0, 0)]])
+	check("M32", game.last_fx.is_empty() and shake_is(0.0) and is_equal_approx(game.last_anim_duration, 0.0), "새 런: 연출 값 초기화")
+	acts("U D R U")
+	check("M32", shake_is(4.0) and game.player == V(4, 5) and game.turn == 4, "처치 직후: 화면이 흔들리는 중")
+	game.debug_swipe(Vector2(270, 820), Vector2(300, 820))
+	check("M32", game.player == V(5, 5) and game.turn == 5 and game.last_action == "R", "흔들리는 동안의 30px 스와이프도 평소처럼 이동")
+	game.debug_swipe(Vector2(270, 820), Vector2(290, 820))
+	check("M32", game.turn == 5, "24px 미만은 여전히 무시(흔들림이 입력 좌표를 바꾸지 않는다)")
+	game.debug_press("wait")
+	check("M32", game.turn == 6 and game.last_action == "W" and shake_is(0.0), "대기 버튼도 정상, 흔들림 없는 턴은 last_shake 0")
+	check("M32", game.debug_rewind(), "되감기")
+	check("M32", fx_is(["rewind_flash"]) and shake_is(0.0) and is_equal_approx(game.last_anim_duration, 0.0), "되감기: rewind_flash 만, 흔들림 0, 연출 길이 0")
+	check("M32", game.turn == 5 and game.player == V(5, 5), "되감기 결과는 3차와 같다")
 
 
 func m11_pressure_and_turn_limit() -> void:
