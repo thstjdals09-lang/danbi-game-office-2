@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "dgo2-builder",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "단비의 게임회사2 빌드실: 기획 패키지를 Godot 게임으로 만들고 검사를 통과시킨다.",
   "author": {
     "name": "danbi-game-office-2"
