@@ -83,7 +83,8 @@ idea ─디자인실─▶ designing ─▶ designed ─기획실─▶ planning
 
 ## 기획 패키지
 
-- `design/FIRST_BUILD.md`: 범위 · 규칙 확정(수치표) · 콘텐츠 · 상태 흐름 · **테스트 인터페이스** · 빌드실 메모
+- `design/FIRST_BUILD.md`: 범위 · 규칙 확정(수치표, 처리 순서) · 콘텐츠 · 상태 흐름 · **테스트 인터페이스** · 빌드실 메모 · 기획실 관찰
+- `design/first_build_replay.py`: 디자인실의 sim 코드로 콘텐츠의 정답 순서와 규칙 장면의 기대값을 계산하는 스크립트. 검사의 기대값은 손으로 계산하지 않는다
 - `design/SCREENS.md`: spec의 화면마다 `## <screen id> — <이름>` 절. 텍스트 와이어프레임, 요소, 동작, 피드백
 - `design/spec.json`: DB `games.spec`과 같은 내용 (아래 형식)
 - `tests/smoke.gd`: must_work마다 `check("M<n>", ...)`. 테스트 인터페이스의 이름만 사용. 규칙을 실제로 확인
