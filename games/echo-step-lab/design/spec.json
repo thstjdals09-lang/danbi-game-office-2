@@ -1,0 +1,43 @@
+{
+  "one_liner": "7×7 격자에서 3턴 전의 내 이동과 칼질을 메아리가 그대로 다시 하는 턴제 전술. 나는 직접 적을 해치지 못하고, 지금의 한 수를 3턴 뒤의 함정으로 만든다.",
+  "orientation": "portrait",
+  "controls": "화면 어디서나 밀어서 이동(4방향). 베기 버튼을 켜고 밀면 그 방향으로 베기. 대기 버튼.",
+  "core_loop": [
+    "적의 공개된 의도와 발자국 ①②③을 읽는다",
+    "이동·베기·대기 중 하나를 고른다(미리보기로 3턴 뒤 타격 칸 확인)",
+    "메아리가 3턴 전 행동을 재생해 적을 밟거나 벤다",
+    "적이 의도대로 움직이고 다음 의도가 공개된다"
+  ],
+  "screens": [
+    {"id": "title", "what": "제목, 한 줄 설명, 발자국 그림, 눌러서 시작"},
+    {"id": "play", "what": "층·턴·체력, 7×7 보드(플레이어·메아리·발자국·적·의도), 처치 수, 베기·대기 버튼"},
+    {"id": "result", "what": "승패, 도달 층, 처치 출처, 남은 체력, 패배 원인, 눌러서 다시"}
+  ],
+  "win_lose": "3개 층의 적과 증원을 모두 없애면 승리. 체력 0 또는 한 층에서 60턴이 지나면 패배.",
+  "session_seconds": 360,
+  "art_direction": "어두운 바탕의 돌 격자. 플레이어 흰 원, 메아리 반투명 점선 원, 졸개 정사각형, 궁수 삼각형, 벽 꽉 찬 사각형. 색이 아니라 모양·숫자·무늬로 구분.",
+  "must_work": [
+    {"id": "M1", "text": "타이틀에서 탭하면 1층이 시작된다", "check": "실행 직후 state == TITLE. debug_tap 후 state == PLAY, floor_index 0, floor_count 3, turn 0, hp 5, player (3,6), 적 2(졸개 (3,0)의 의도 move 아래 방향)"},
+    {"id": "M2", "text": "가능한 행동만 턴을 쓴다", "check": "벽 (3,5), 궁수 (2,6)인 층에서 U·SU(벽), D·SD(보드 밖), L(적 칸) → false이고 turn 0. SL(적 칸으로 베기)과 R은 true"},
+    {"id": "M3", "text": "메아리는 정확히 3턴 뒤에 나타나고 발자국이 그 미래를 보여 준다", "check": "U U U 뒤 echo_active false, footprints == [(3,5) U in 1, (3,4) U in 2, (3,3) U in 3]. 4번째 행동 SL 뒤 echo_active true, echo_pos (3,5), footprints[2] == (3,3) SL in 3"},
+    {"id": "M4", "text": "메아리가 밟은 칸의 적은 처치된다", "check": "졸개 (3,2)인 층에서 U D R 뒤 졸개가 (3,5)에 있고, U 뒤 kills.stomp == 1, 적 0, 층 클리어"},
+    {"id": "M5", "text": "베기는 지금은 아무 일도 없고 3턴 뒤 메아리가 벤다", "check": "궁수 (3,5)인 층에서 SU W W 뒤 적 1·kills.slash 0, W 뒤 kills.slash == 1, 적 0"},
+    {"id": "M6", "text": "졸개는 붙으면 치고, 공개된 의도는 바뀌지 않아 피할 수 있다", "check": "졸개 (3,5): 의도 hit 아래. W 뒤 hp 4. L 뒤 hp 4(헛침), 졸개는 (3,5) 그대로, 다음 의도 move 아래"},
+    {"id": "M7", "text": "궁수는 사선의 플레이어를 쏘고, 메아리가 사선에 서면 화살을 막는다", "check": "시작 (3,3), 궁수 (3,0): 의도 aim 아래. D D D 뒤 hp 2. W 뒤 hp 2, echo_pos (3,4). W 뒤 hp 2"},
+    {"id": "M8", "text": "화살은 사선에 먼저 들어온 적을 맞힌다(오사)", "check": "졸개 (2,4)[id 0], 궁수 (3,0)[id 1]: W 뒤 kills.friendly == 1, hp 5, 남은 적은 궁수 1"},
+    {"id": "M9", "text": "기본 3개 층이 정답 순서로 풀리고 승리한다(규칙이 시뮬레이션과 같다)", "check": "1층 11행동 뒤 floor_index 1·turn 0·hp 5, 2층 12행동 뒤 floor_index 2, 3층 12행동 뒤 state RESULT·result_won·hp 5·kills 밟기 1 베기 11 오사 0"},
+    {"id": "M10", "text": "체력이 0이면 패배하고, 결과 화면에서 탭하면 1층부터 다시 시작한다", "check": "졸개 (3,5)인 층에서 W 5번 → state RESULT, result_won false, hp 0. debug_tap → PLAY, floor_index 0, floor_count 3, hp 5, turn 0, kills 0"},
+    {"id": "M11", "text": "30턴 이후 증원 압박이 오고 60턴이면 패배한다", "check": "갇힌 졸개 층에서 W 30번 뒤 적 1, 31번 뒤 적 2((3,0)에 졸개), 60번 뒤 state RESULT·result_won false·hp 5"},
+    {"id": "M12", "text": "밀기로 이동하고, 베기 버튼을 켜고 밀면 베기, 대기 버튼으로 대기한다", "check": "1층에서 위로 debug_swipe → player (3,5)·turn 1·last_action U. debug_press slash 후 위로 swipe → player 그대로·turn 2·last_action SU. debug_press wait → turn 3·last_action W. 24px 미만 swipe는 턴을 쓰지 않음"}
+  ],
+  "not_now": [
+    "방패병, 폭탄병, 밀치기와 으깨기",
+    "무작위 층 생성, 층 변형",
+    "유물, 해금, 도전 시드",
+    "되감기, 저장과 재개, 일시정지",
+    "길게 누른 채 스와이프(베기), 두 번 탭(대기)",
+    "층 소개 화면, 보상 화면",
+    "사운드, 진동",
+    "먹선 검객·종이 인형 그림"
+  ]
+}

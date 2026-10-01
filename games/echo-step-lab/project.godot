@@ -1,0 +1,29 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+config/name="메아리 발자국 (시험용)"
+config/description="한 칸 걸으면 3턴 뒤 메아리 분신이 그 길과 칼질을 다시 하는 턴제 전술"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+
+[display]
+window/size/viewport_width=540
+window/size/viewport_height=960
+window/size/window_width_override=405
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=1
+
+[gui]
+
+theme/custom_font="res://assets/fonts/NotoSansKR-Medium.ttf"
+
+[input_devices]
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.027, 0.067, 0.118, 1)
