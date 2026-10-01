@@ -187,8 +187,11 @@
     var r = ROLES.find(function (x) { return x.id === id; });
     return r ? r.name : id;
   }
+  // 결정 요청 한 줄. 접혀 있을 때는 질문·게임·추천만 보이고, "추천대로"는 펼치지 않고 바로 누를 수 있다.
   function decisionHtml(d, withGame) {
     var g = gameOf(d.game_id);
+    var key = "d:" + d.id;
+    var label = function (id) { var o = (d.options || []).find(function (x) { return x.id === id; }); return o ? o.label : id; };
     var opts = (d.options || []).map(function (o) {
       var rec = o.id === d.recommended, chosen = o.id === d.chosen;
       return '<div class="opt' + (chosen ? " chosen" : "") + '"><div class="nm">' + esc(o.label) + (rec ? '<span class="chip next">부서 추천</span>' : "") + (chosen ? '<span class="chip ok">대표 결정</span>' : "") + "</div>" +
@@ -196,10 +199,16 @@
         (o.pros ? '<div class="pc"><b class="pro">+</b> ' + esc(o.pros) + "</div>" : "") + (o.cons ? '<div class="pc"><b class="con">−</b> ' + esc(o.cons) + "</div>" : "") +
         '<div class="acts"><button class="btn small' + (chosen ? " go" : "") + '" type="button" data-decide="' + d.id + '" data-choice="' + esc(o.id) + '"' + dis() + ">" + (chosen ? "✓ 결정함" : "이걸로") + "</button></div></div>";
     }).join("");
-    return '<article class="card' + (d.chosen ? "" : " attn") + '"><div class="card-title">' + esc(d.question) + "</div>" +
-      (withGame && g ? '<div class="p"><button class="linkish" type="button" data-game="' + esc(g.slug) + '">' + esc(g.title) + "</button> · " + esc(deptName(d.asked_by)) + "</div>" : "") +
+    var sub = (withGame && g ? esc(g.title) + " · " : "") + (d.chosen ? "결정: " + esc(label(d.chosen)) : "추천: " + esc(label(d.recommended)));
+    var side = d.chosen
+      ? '<span class="chip ok">결정함</span>'
+      : '<button class="btn small" type="button" data-decide="' + d.id + '" data-choice="' + esc(d.recommended) + '"' + dis() + ">추천대로</button>";
+    return '<details class="fold ask' + (d.chosen ? "" : " attn") + '" data-fold="' + key + '"' + foldOpen(key) + '><summary><span class="chev">›</span>' +
+      '<span class="fold-main"><span class="fold-title">' + esc(d.question) + '</span><span class="fold-sub">' + sub + "</span></span>" +
+      '<span class="fold-side">' + side + '</span></summary><div class="fold-body">' +
+      (withGame && g ? '<div class="p"><button class="linkish" type="button" data-game="' + esc(g.slug) + '">' + esc(g.title) + " 열기 ↗</button> · " + esc(deptName(d.asked_by)) + "</div>" : "") +
       '<div class="opts">' + opts + "</div>" + (d.reason ? '<div class="p">추천 이유: ' + esc(d.reason) + "</div>" : "") +
-      (d.note ? '<div class="note">' + esc(d.note) + "</div>" : "") + "</article>";
+      (d.note ? '<div class="note">' + esc(d.note) + "</div>" : "") + "</div></details>";
   }
   function versionText(g) {
     var parts = [];
@@ -282,6 +291,10 @@
     }).join("") : '<div class="empty">플레이할 게임이 없어요. 검수를 통과하면 여기에 와요.</div>';
 
     $("askSec").hidden = !asks.length;
+    // 같은 게임의 요청끼리 붙여서, 오래된 것부터
+    asks.sort(function (a, b) { return a.game_id === b.game_id ? new Date(a.created_at) - new Date(b.created_at) : (a.game_id < b.game_id ? -1 : 1); });
+    $("askSide").innerHTML = asks.length + "건 · 고르기 전에는 추천안으로 진행해요" +
+      (asks.length > 1 ? ' <button class="btn small ghost" type="button" data-decide-all="1"' + dis() + ">전부 추천대로</button>" : "");
     $("asks").innerHTML = asks.map(function (d) { return decisionHtml(d, true); }).join("");
 
     $("heldSec").hidden = !held.length;
@@ -633,7 +646,22 @@
       await act("ceo_pick_art", { p_game: g.id, p_pick: same ? null : d.pick }, g.title + " · " + (same ? "아트 방향 선택 취소" : "아트 방향 " + d.pick + " 선택"));
       return;
     }
+    if (d.decideAll) {
+      var todo = pendingDecisions();
+      if (!state.ceo) { toast("대표 로그인이 필요합니다", true); return; }
+      if (!confirm("결정 요청 " + todo.length + "건을 전부 부서 추천대로 정할까요?")) return;
+      for (var i = 0; i < todo.length; i++) {
+        if (LIVE) {
+          var rr = await sb.rpc("ceo_decide", { p_decision: todo[i].id, p_choice: todo[i].recommended, p_note: null });
+          if (rr.error) { toast(rr.error.message, true); break; }
+        } else todo[i].chosen = todo[i].recommended;
+      }
+      toast(todo.length + "건을 추천대로 정했어요");
+      if (LIVE) await load(); else render();
+      return;
+    }
     if (d.decide) {
+      e.preventDefault();  // 접힌 줄 안의 "추천대로"를 눌러도 줄이 펼쳐지지 않게
       var dec = state.decisions.find(function (x) { return x.id === d.decide; });
       if (!dec) return;
       var opt = (dec.options || []).find(function (o) { return o.id === d.choice; });

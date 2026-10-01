@@ -86,6 +86,12 @@
   .chip.next { color: var(--purple); background: rgba(188,156,255,.12); }
   .chip.ms { color: var(--amber); background: rgba(243,200,106,.12); font-weight: 700; }
   .chip.ok { color: var(--green); background: rgba(85,214,168,.13); }
+  .fold.ask > summary { grid-template-columns: auto minmax(0, 1fr) auto; padding: 9px 14px; }
+  .fold.ask:not([open]) .fold-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fold.ask .fold-main { gap: 1px; }
+  .fold.ask.attn { border-color: rgba(243,200,106,.4); }
+  .fold.ask .fold-title { font-weight: 500; }
+  .fold.ask[open] .fold-sub { display: block; }
   .linkish { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-size: inherit; }
   .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
   .opt { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; align-content: start; }
@@ -308,7 +314,7 @@
       <div class="list" id="playtest"></div>
     </div>
     <div class="sec" id="askSec" hidden>
-      <div class="sec-head"><h2>결정 요청</h2><span>부서가 추린 선택지예요. 고르기 전에는 추천안으로 진행해요</span></div>
+      <div class="sec-head"><h2>결정 요청</h2><span id="askSide"></span></div>
       <div class="list" id="asks"></div>
     </div>
     <div class="sec" id="heldSec">
