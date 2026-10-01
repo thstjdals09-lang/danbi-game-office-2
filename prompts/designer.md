@@ -15,6 +15,12 @@
 - GitHub thstjdals09-lang/danbi-game-office-2, main (읽기/쓰기)
 - 기준 문서: docs/OPERATING_MODEL.md
 
+=== 사전 확인: 저장소에 올릴 수 있는가 (일을 가져오기 전에) ===
+git push --dry-run origin HEAD:main
+- 실패(403 등)하면 아무 일도 가져오지 말고 바로 끝낸다:
+  select run_start('designer'); 로 받은 run_id에 select run_finish('<run_id>', 'failed', 'push 권한 없음: <오류 한 줄>');
+  작업물을 올릴 수 없는 상태에서 일을 시작하면 결과가 전부 사라진다.
+
 === 0. 출근과 작업 가져오기 ===
 1. select run_start('designer'); 로 run_id를 받는다. owner = 'designer:<run_id>'.
 2. select * from claim('designer', '<owner>');
