@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "dgo2-prod-designer",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "단비의 게임회사2 프로덕션 디자인실: 대표가 합격시킨 게임의 다음 차수를 설계한다.",
   "author": {
     "name": "danbi-game-office-2"
