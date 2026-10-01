@@ -6,7 +6,7 @@
 단비의 게임회사2의 빌드실을 실행하세요.
 
 연결 자원
-- Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행)
+- Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행: Supabase 커넥터의 execute_sql 등)
 - GitHub thstjdals09-lang/danbi-game-office-2, main (읽기/쓰기)
 - 기준 문서: docs/OPERATING_MODEL.md 의 "게임 저장소 규칙"
 - 참고 구현: games/first-lantern/ (구조, debug 훅, tests/smoke.gd 작성 방식)
@@ -26,8 +26,11 @@
    - 입력은 InputEventScreenTouch로 받는다 (마우스는 project.godot 설정으로 터치가 된다).
    - tests/smoke.gd에 must_work마다 check("M<n>", ...)를 하나 이상 둔다.
      입력은 메인 씬의 debug_* 함수로 흉내 낸다. 마지막에 "SMOKE PASS"를 출력하고 실패가 있으면 exit 1.
-   - Godot를 실행할 수 있는 환경이면 python tools/smoke.py games/<slug> 를 돌려 PASS를 확인한다.
-5. main에 커밋한다. 메시지: "<slug>: build <attempt> — <한 줄 요약>"
+   - Godot를 실행할 수 있는 환경이면 직접 검사해 PASS를 확인한다. 리눅스(클라우드 작업)라면:
+       export GODOT="$(bash tools/install_godot.sh)"; python3 tools/smoke.py games/<slug>
+     FAIL이면 고쳐서 다시 돌린다. PASS가 나올 때까지 반복하되, 시간이 모자라면 실패 상태로 제출한다.
+5. main에 커밋하고 push한다. 메시지: "<slug>: build <attempt> — <한 줄 요약>"
+   (작업 브랜치에서 일하는 환경이면 git push origin HEAD:main)
 6. select submit_build('<game_id>', '<owner>', '<커밋 SHA>', <smoke 결과>, '<무엇을 만들었고 무엇을 고쳤는지>');
    - <smoke 결과>: 직접 smoke.py를 돌렸으면 true/false, 못 돌렸으면 null (검수실이 CI 결과로 확정한다).
    - false면 빌드 대기로 되돌아간다. 실패 원인을 notes에 적는다.

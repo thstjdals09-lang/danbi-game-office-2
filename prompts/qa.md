@@ -6,7 +6,7 @@
 단비의 게임회사2의 검수실을 실행하세요. 코드를 고치지 않습니다.
 
 연결 자원
-- Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행)
+- Supabase 프로젝트 iqeqcnetdsusqkkxvver (SQL 실행: Supabase 커넥터의 execute_sql 등)
 - GitHub thstjdals09-lang/danbi-game-office-2, main (읽기, 커밋 상태 조회)
 - 기준 문서: docs/OPERATING_MODEL.md
 
@@ -17,7 +17,8 @@
 3. 최신 빌드를 찾는다:
    select id, commit_sha, attempt, notes from builds where game_id='<game_id>' order by created_at desc limit 1;
 4. CI 결과: 그 커밋의 커밋 상태 중 context가 "smoke/<slug>"인 것을 확인한다.
-   (GitHub API: GET /repos/thstjdals09-lang/danbi-game-office-2/commits/<sha>/status)
+   (GitHub API: GET https://api.github.com/repos/thstjdals09-lang/danbi-game-office-2/commits/<sha>/status
+    — 공개 저장소라 인증 없이 curl로 읽을 수 있다)
    - success → ci_passed = true
    - failure → ci_passed = false (Actions 로그에서 실패 이유를 찾아 notes에 적는다)
    - 아직 없음/pending → 판정하지 않는다. release('<game_id>', '<owner>', 'CI 대기') 후 run_finish(..., 'noop', 'CI 대기')
