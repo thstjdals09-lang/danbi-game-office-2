@@ -94,10 +94,18 @@
   .pv-mock { display: grid; place-items: center; background: #0b1627; border-radius: 12px; overflow: hidden; min-height: 160px; }
   .pv-mock img { max-width: 100%; max-height: min(64vh, 620px); object-fit: contain; display: block; }
   .pv-text { display: grid; gap: 10px; align-content: start; min-width: 0; }
-  .pv-acts { position: sticky; bottom: -20px; background: var(--panel); padding: 10px 0 4px; margin-bottom: -4px; }
+  .pv-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .pv-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--dim); }
+  .pv-meta .btn { padding: 5px 10px; font-size: 12px; white-space: nowrap; }
+  .pview { padding-bottom: 0; }
+  .pv-acts { position: sticky; bottom: 0; background: var(--panel); padding: 12px 0 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px; border-top: 1px solid var(--line-soft); }
+  .pv-sub { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .pv-acts .btn { width: 100%; min-height: 44px; padding-left: 6px; padding-right: 6px; white-space: nowrap; text-align: center; justify-content: center; }
   @media (max-width: 640px) {
     .props { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
     .pv { grid-template-columns: 1fr; }
+    .pv-acts { grid-template-columns: 1fr; }
+    .pv-acts .btn.go { min-height: 48px; font-size: 15px; }
     .pv-mock img { max-height: 46vh; }
   }
   .summary { font-size: 13px; color: var(--text); white-space: pre-wrap; border-left: 2px solid var(--line); padding-left: 10px; }

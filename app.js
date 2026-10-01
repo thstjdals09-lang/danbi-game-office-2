@@ -541,19 +541,19 @@
     ui.propIdx = i;
     var g = items[i];
     function nav(to, label, text) { return '<button class="btn ghost small" type="button" aria-label="' + label + '"' + (to ? ' data-prop="' + to.id + '"' : " disabled") + ">" + text + "</button>"; }
+    // 위: 넘기기와 닫기 한 줄. 아래: 가장 큰 단추 하나(만든다) + 같은 너비의 단추 셋
     $("propBody").innerHTML =
-      '<div class="iv-top"><span class="iv-turn">빌드 결재 · ' + esc(versionText(g)) + (g.genre ? " · " + esc(g.genre) : "") +
-      '</span><span class="iv-nav">' + nav(items[i - 1], "이전", "‹") + '<span class="num">' + (i + 1) + " / " + items.length + "</span>" + nav(items[i + 1], "다음", "›") +
-      '<button class="btn ghost small" type="button" data-close>닫기</button></span></div>' +
+      '<div class="pv-top"><span class="iv-nav">' + nav(items[i - 1], "이전", "‹") + '<span class="num">' + (i + 1) + " / " + items.length + "</span>" + nav(items[i + 1], "다음", "›") +
+      '</span><button class="btn ghost small" type="button" data-close>닫기</button></div>' +
       '<div class="pv"><a class="pv-mock" href="' + esc(mockOf(g)) + '" target="_blank" rel="noopener"><img alt="주 화면 시안" src="' + esc(mockOf(g)) +
       '" onerror="this.parentNode.classList.add(&quot;none&quot;)"><span class="ph">화면 시안이 없어요</span></a>' +
-      '<div class="pv-text"><h3>' + esc(g.title) + '</h3><p class="iv-pitch">' + esc(g.pitch) + "</p>" +
+      '<div class="pv-text"><h3>' + esc(g.title) + '</h3><div class="pv-meta"><span>' + esc(versionText(g)) + (g.genre ? " · " + esc(g.genre) : "") + "</span>" + docButton(g) + "</div>" +
+      '<p class="iv-pitch">' + esc(g.pitch) + "</p>" +
       (g.design_summary ? '<div class="summary">' + esc(g.design_summary) + "</div>" : "") + "</div></div>" +
-      '<div class="acts pv-acts">' + docButton(g) +
-      '<button class="btn go" type="button" data-dsn="go" data-id="' + g.id + '"' + dis() + ">이대로 만든다</button>" +
-      '<button class="btn" type="button" data-dsn="redo" data-id="' + g.id + '"' + dis() + ">설계 다시</button>" +
+      '<div class="pv-acts"><button class="btn go" type="button" data-dsn="go" data-id="' + g.id + '"' + dis() + ">이대로 만든다</button>" +
+      '<div class="pv-sub"><button class="btn" type="button" data-dsn="redo" data-id="' + g.id + '"' + dis() + ">설계 다시</button>" +
       '<button class="btn ghost" type="button" data-dsn="hold" data-id="' + g.id + '"' + dis() + ">보류</button>" +
-      '<button class="btn bad" type="button" data-dsn="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div>";
+      '<button class="btn bad" type="button" data-dsn="drop" data-id="' + g.id + '"' + dis() + ">버리기</button></div></div>";
     if (!dlg.open) dlg.showModal();
     $("propBody").scrollTop = 0;
   }
